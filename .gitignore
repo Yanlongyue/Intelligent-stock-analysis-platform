@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+# 不需要提交生成的数据和报告（用户可以自己生成）
+stock_analysis_program/data/
+stock_analysis_program/reports/
+stock_analysis_program/logs/
+stock_analysis_program/templates/
+.workbuddy/
+*.log
+
+# 个人配置（包含敏感信息）
+stock_analysis_program/config/tushare_config.py
+# 但示例配置文件可以提交
+# stock_analysis_program/config/tushare_config_example.py 可以提交
+stock_analysis_program/__pycache__/
+
+# 临时文件
+temp/
+tmp/
+*.tmp
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# 大型文件
+*.zip
+*.tar
+*.gz

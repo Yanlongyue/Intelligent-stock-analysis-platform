@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票分析报告 - 2026年3月26日</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #4CAF50, #2196F3, #FF9800, #F44336);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #2196F3, #4CAF50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header .date {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+        
+        .header .summary {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .summary-item {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .summary-item .number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 1.6em;
+        }
+        
+        .section h3 {
+            color: #34495e;
+            margin: 20px 0 15px 0;
+            font-size: 1.3em;
+        }
+        
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stock-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            border-top: 3px solid #2196F3;
+        }
+        
+        .stock-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .stock-code {
+            font-weight: bold;
+            color: #2196F3;
+            font-size: 1.2em;
+        }
+        
+        .stock-name {
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        
+        .stock-price {
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .current-price {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .price-change {
+            font-size: 1.1em;
+            margin-top: 5px;
+        }
+        
+        .change-up {
+            color: #f44336;
+        }
+        
+        .change-down {
+            color: #4CAF50;
+        }
+        
+        .hour-prediction {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .hour-schedule {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .hour-item {
+            text-align: center;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .recommendation-stars {
+            display: flex;
+            gap: 5px;
+            margin: 10px 0;
+        }
+        
+        .star {
+            color: #FFD700;
+            font-size: 1.2em;
+        }
+        
+        .star.empty {
+            color: #ddd;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: #2196F3;
+            color: white;
+            font-weight: bold;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .buy-signal {
+            color: #f44336;
+            font-weight: bold;
+        }
+        
+        .sell-signal {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .risk-level {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .risk-low {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .risk-medium {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .risk-high {
+            background: #f44336;
+            color: white;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .disclaimer {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .stock-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hour-schedule {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        .highlight {
+            background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #2196F3;
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 20px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 13px;
+            top: 5px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #2196F3;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px #2196F3;
+        }
+        
+        .timeline-time {
+            font-weight: bold;
+            color: #2196F3;
+            margin-bottom: 5px;
+        }
+        
+        .timeline-content {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📈 股票分析报告</h1>
+            <div class="date">2026年3月26日 09:30</div>
+            <div class="summary">
+                <div class="summary-item">
+                    <div class="number">4</div>
+                    <div>分析标的</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">24</div>
+                    <div>小时预测</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">3</div>
+                    <div>潜力推荐</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">60%</div>
+                    <div>建议仓位</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌍 国际局势分析</h2>
+            <div class="stock-grid">
+                <div class="stock-card">
+                    <h3>美联储政策</h3>
+                    <p><span class="highlight">偏鹰派立场</span>，3月会议按兵不动，新增"中东局势影响不确定"表述</p>
+                    <p>政策利率处于中性区间高端，降息预期推迟</p>
+                </div>
+                <div class="stock-card">
+                    <h3>中东局势</h3>
+                    <p><span class="highlight">美伊冲突升级</span>，地缘政治风险上升</p>
+                    <p>推升原油价格，增加全球通胀压力</p>
+                </div>
+                <div class="stock-card">
+                    <h3>美元指数</h3>
+                    <p>预计在<span class="highlight">100-102区间</span>波动</p>
+                    <p>强势美元压制新兴市场，北向资金可能流出</p>
+                </div>
+                <div class="stock-card">
+                    <h3>国内政策</h3>
+                    <p>"<span class="highlight">十五五</span>"规划开局之年</p>
+                    <p>重点方向：新能源、新基建、科技创新</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 个股详细分析</h2>
+            <div class="stock-grid">
+                <!-- 协鑫集成 -->
+                <div class="stock-card">
+                    <div class="stock-header">
+                        <div>
+                            <div class="stock-code">002506.SZ</div>
+                            <div class="stock-name">协鑫集成</div>
+                        </div>
+                        <div class="risk-level risk-high">高风险</div>
+                    </div>
+                    <div class="stock-price">
+                        <div class="current-price">5.79元</div>
+                        <div class="price-change change-down">昨日 -1.36%</div>
+                    </div>
+                    <p><strong>行业：</strong>光伏设备</p>
+                    <p><strong>基本面：</strong>ROE -26.67%，负债率90.76%</p>
+                    <p><strong>技术面：</strong>短期反弹后回调，5.70元支撑</p>
+                    <div class="hour-prediction">
+                        <strong>今日小时预测：</strong>
+                        <div class="hour-schedule">
+                            <div class="hour-item">09:30 ±1.0%</div>
+                            <div class="hour-item">10:30 +0.5-1.5%</div>
+                            <div class="hour-item">13:00 ±0.8%</div>
+                            <div class="hour-item">15:00 ±1.2%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 金开新能 -->
+                <div class="stock-card">
+                    <div class="stock-header">
+                        <div>
+                            <div class="stock-code">600821.SH</div>
+                            <div class="stock-name">金开新能</div>
+                        </div>
+                        <div class="risk-level risk-medium">中高风险</div>
+                    </div>
+                    <div class="stock-price">
+                        <div class="current-price">11.25元</div>
+                        <div class="price-change change-up">昨日 +1.63%</div>
+                    </div>
+                    <p><strong>行业：</strong>新能源</p>
+                    <p><strong>基本面：</strong>概念炒作特征明显</p>
+                    <p><strong>技术面：</strong>突破前期高点，强势特征</p>
+                    <div class="hour-prediction">
+                        <strong>今日小时预测：</strong>
+                        <div class="hour-schedule">
+                            <div class="hour-item">09:30 -1-2%</div>
+                            <div class="hour-item">10:30 +0.5-1.5%</div>
+                            <div class="hour-item">13:00 ±0.5%</div>
+                            <div class="hour-item">15:00 +1-2%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 金正大 -->
+                <div class="stock-card">
+                    <div class="stock-header">
+                        <div>
+                            <div class="stock-code">002470.SZ</div>
+                            <div class="stock-name">金正大</div>
+                        </div>
+                        <div class="risk-level risk-medium">中风险</div>
+                    </div>
+                    <div class="stock-price">
+                        <div class="current-price">2.93元</div>
+                        <div class="price-change change-up">昨日 +1.03%</div>
+                    </div>
+                    <p><strong>行业：</strong>化肥农药</p>
+                    <p><strong>基本面：</strong>农业周期股，春耕需求</p>
+                    <p><strong>技术面：</strong>底部反弹，2.80元支撑强</p>
+                    <div class="hour-prediction">
+                        <strong>今日小时预测：</strong>
+                        <div class="hour-schedule">
+                            <div class="hour-item">09:30 +0.5-1.5%</div>
+                            <div class="hour-item">10:30 +1-2%</div>
+                            <div class="hour-item">13:00 -0.5-1%</div>
+                            <div class="hour-item">15:00 ±0.5%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中国能建 -->
+                <div class="stock-card">
+                    <div class="stock-header">
+                        <div>
+                            <div class="stock-code">601868.SH</div>
+                            <div class="stock-name">中国能建</div>
+                        </div>
+                        <div class="risk-level risk-low">中低风险</div>
+                    </div>
+                    <div class="stock-price">
+                        <div class="current-price">3.34元</div>
+                        <div class="price-change change-up">昨日 +1.83%</div>
+                    </div>
+                    <p><strong>行业：</strong>建筑工程</p>
+                    <p><strong>基本面：</strong>央企龙头，新基建主力</p>
+                    <p><strong>技术面：</strong>突破震荡区间，量价配合</p>
+                    <div class="hour-prediction">
+                        <strong>今日小时预测：</strong>
+                        <div class="hour-schedule">
+                            <div class="hour-item">09:30 ±0.5%</div>
+                            <div class="hour-item">10:30 +0.8-1.5%</div>
+                            <div class="hour-item">13:00 ±0.3%</div>
+                            <div class="hour-item">15:00 +1-1.8%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>⭐ 趋势潜力股推荐</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>股票</th>
+                            <th>推荐星级</th>
+                            <th>推荐理由</th>
+                            <th>目标价位</th>
+                            <th>风险等级</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>中国能建</strong><br>601868.SH</td>
+                            <td>
+                                <div class="recommendation-stars">
+                                    <div class="star">★</div>
+                                    <div class="star">★</div>
+                                    <div class="star">★</div>
+                                    <div class="star">★</div>
+                                    <div class="star empty">★</div>
+                                </div>
+                            </td>
+                            <td>政策受益明确，低估值央企，技术突破，机构资金流入</td>
+                            <td><span class="buy-signal">3.50-3.80元</span></td>
+                            <td><span class="risk-level risk-low">中低风险</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>金开新能</strong><br>600821.SH</td>
+                            <td>
+                                <div class="recommendation-stars">
+                                    <div class="star">★</div>
+                                    <div class="star">★</div>
+                                    <div class="star">★</div>
+                                    <div class="star empty">★</div>
+                                    <div class="star empty">★</div>
+                                </div>
+                            </td>
+                            <td>新能源概念，政策支持，技术突破，游资关注</td>
+                            <td><span class="buy-signal">12.00-13.00元</span></td>
+                            <td><span class="risk-level risk-medium">中高风险</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>协鑫集成</strong><br>002506.SZ</td>
+                            <td>
+                                <div class="recommendation-stars">
+                                    <div class="star">★</div>
+                                    <div class="star">★</div>
+                                    <div class="star empty">★</div>
+                                    <div class="star empty">★</div>
+                                    <div class="star empty">★</div>
+                                </div>
+                            </td>
+                            <td>光伏困境反转预期，钙钛矿新技术，超跌反弹机会</td>
+                            <td><span class="buy-signal">6.00-6.50元</span></td>
+                            <td><span class="risk-level risk-high">高风险</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>⏰ 小时级操作时间线</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">09:30 - 10:30 观察阶段</div>
+                    <div class="timeline-content">
+                        <p><strong>策略：</strong>不急于操作，观察开盘强度和量能</p>
+                        <p><strong>重点关注：</strong>中国能建的机构资金动向</p>
+                        <p><strong>风险提示：</strong>金开新能可能面临获利盘压力</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">10:30 - 11:30 第一次决策</div>
+                    <div class="timeline-content">
+                        <p><strong>买入条件：</strong></p>
+                        <ul>
+                            <li>中国能建站稳3.35元 → 建仓10%</li>
+                            <li>金开新能回调至11.00元 → 小仓位介入</li>
+                        </ul>
+                        <p><strong>仓位控制：</strong>不超过计划仓位的30%</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">13:00 - 14:00 第二次决策</div>
+                    <div class="timeline-content">
+                        <p><strong>策略：</strong>观察上午走势，调整操作计划</p>
+                        <p><strong>操作：</strong>根据实际走势，可考虑加仓符合预期的标的</p>
+                        <p><strong>仓位控制：</strong>追加不超过20%</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">14:00 - 15:00 最终决策</div>
+                    <div class="timeline-content">
+                        <p><strong>策略：</strong>完成计划仓位的建立，设置止损止盈</p>
+                        <p><strong>原则：</strong>避免追高，宁可错过</p>
+                        <p><strong>仓位确认：</strong>确保总仓位不超过60%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🛡️ 风险控制策略</h2>
+            <div class="stock-grid">
+                <div class="stock-card">
+                    <h3>止损纪律</h3>
+                    <p>每只股票设定<span class="highlight">3-5%止损线</span></p>
+                    <p>严格执行，避免情绪化操作</p>
+                </div>
+                <div class="stock-card">
+                    <h3>仓位管理</h3>
+                    <p>单股不超过<span class="highlight">15%仓位</span></p>
+                    <p>总仓位控制在<span class="highlight">40-60%</span></p>
+                </div>
+                <div class="stock-card">
+                    <h3>时间窗口</h3>
+                    <p>短线：1-5天（金开新能、协鑫集成）</p>
+                    <p>中线：5-20天（中国能建、金正大）</p>
+                </div>
+                <div class="stock-card">
+                    <h3>分批操作</h3>
+                    <p>分<span class="highlight">2-3次</span>建仓</p>
+                    <p>避免一次性满仓</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ 重要风险提示</h3>
+            <p>1. <strong>国际局势不确定性：</strong>中东冲突可能升级，美联储政策可能转向</p>
+            <p>2. <strong>个股基本面风险：</strong>协鑫集成高负债，金开新能游资撤退风险</p>
+            <p>3. <strong>市场流动性风险：</strong>美元强势可能引发外资流出</p>
+            <p>4. <strong>操作执行风险：</strong>严格执行止损，避免情绪化交易</p>
+        </div>
+
+        <div class="disclaimer">
+            <h3>📝 免责声明</h3>
+            <p>本分析报告基于公开数据和AI分析生成，仅供参考，不构成投资建议。投资有风险，入市需谨慎。投资者应根据自身风险承受能力和投资目标，独立做出投资决策。过去的表现不代表未来的结果。</p>
+            <p><strong>重要提示：</strong></p>
+            <ul>
+                <li>股市有风险，投资需谨慎</li>
+                <li>不要将所有资金投入单一股票</li>
+                <li>严格执行止损纪律</li>
+                <li>保持理性，避免情绪化交易</li>
+                <li>关注市场变化，及时调整策略</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p><strong>生成时间：</strong>2026年3月26日 09:30</p>
+            <p><strong>分析周期：</strong>每日自动化分析</p>
+            <p><strong>数据来源：</strong>Tushare Pro API、WebSearch、公开信息</p>
+            <p><strong>分析方法：</strong>多角色辩论式投资分析 + 小时级预测模型</p>
+        </div>
+    </div>
+
+    <script>
+        // 简单的交互功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 点击股票卡片显示详细信息
+            const stockCards = document.querySelectorAll('.stock-card');
+            stockCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const stockName = this.querySelector('.stock-name').textContent;
+                    const stockCode = this.querySelector('.stock-code').textContent;
+                    alert(`选中股票：${stockName} (${stockCode})\n点击表格查看详细操作建议。`);
+                });
+            });
+
+            // 更新时间显示
+            function updateTime() {
+                const now = new Date();
+                const timeStr = now.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                const footer = document.querySelector('.footer');
+                if (footer) {
+                    const timeElement = document.createElement('p');
+                    timeElement.innerHTML = `<strong>页面更新时间：</strong>${timeStr}`;
+                    timeElement.style.marginTop = '10px';
+                    timeElement.style.fontSize = '0.8em';
+                    timeElement.style.color = '#999';
+                    footer.appendChild(timeElement);
+                }
+            }
+
+            updateTime();
+
+            // 添加简单的动画效果
+            const sections = document.querySelectorAll('.section');
+            sections.forEach((section, index) => {
+                section.style.opacity = '0';
+                section.style.transform = 'translateY(20px)';
+                section.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                
+                setTimeout(() => {
+                    section.style.opacity = '1';
+                    section.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>

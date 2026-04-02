@@ -1,0 +1,51 @@
+# 七步法股票分析程序依赖包
+
+# 核心依赖
+tushare==1.2.89          # 股票数据获取
+pandas>=1.5.0            # 数据分析处理
+numpy>=1.24.0            # 数值计算
+
+# 报告生成
+jinja2>=3.1.0           # 模板引擎
+markdown>=3.4.0         # Markdown处理
+markdown-it-py>=2.2.0   # Markdown转HTML
+pygments>=2.15.0        # 代码高亮
+
+# 日期时间处理
+python-dateutil>=2.8.0
+pytz>=2023.3
+
+# 调度和自动化
+schedule>=1.2.0         # 定时任务
+APScheduler>=3.10.0     # 高级调度
+
+# 数据存储
+sqlite3                  # 内置数据库
+openpyxl>=3.1.0         # Excel处理
+
+# Web服务（可选）
+fastapi>=0.104.0        # Web框架
+uvicorn[standard]>=0.24.0 # ASGI服务器
+
+# 日志和监控
+loguru>=0.7.0           # 日志管理
+prometheus-client>=0.18.0 # 监控指标
+
+# 测试和质量保证
+pytest>=7.0.0           # 测试框架
+pytest-cov>=4.1.0       # 测试覆盖率
+mypy>=1.6.0             # 类型检查
+black>=23.0.0           # 代码格式化
+flake8>=6.1.0           # 代码检查
+
+# 工具函数
+python-dotenv>=1.0.0    # 环境变量管理
+pyyaml>=6.0             # YAML配置文件
+toml>=0.10.0            # TOML配置文件
+
+# 系统工具
+psutil>=5.9.0           # 系统监控
+tqdm>=4.65.0            # 进度条
+
+# 版本要求
+python>=3.9             # Python版本要求

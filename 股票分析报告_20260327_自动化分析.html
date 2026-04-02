@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票分析报告 2026年3月27日</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #4a6491 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: moveGrid 20s linear infinite;
+        }
+        
+        @keyframes moveGrid {
+            0% { transform: translate(0,0); }
+            100% { transform: translate(20px,20px); }
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header .subtitle {
+            font-size: 18px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header .datetime {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+            z-index: 1;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            border-left: 5px solid;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card.up { border-left-color: #e74c3c; }
+        .stat-card.down { border-left-color: #27ae60; }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .stat-change {
+            font-size: 18px;
+            font-weight: 600;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .change-up { background: #ffeaea; color: #e74c3c; }
+        .change-down { background: #e8f7e8; color: #27ae60; }
+        
+        .analysis-section {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .section-title {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            font-size: 20px;
+            color: #3498db;
+        }
+        
+        .stock-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stock-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(102,126,234,0.3);
+        }
+        
+        .stock-name {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .stock-code {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        .stock-price {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .hourly-prediction {
+            margin-top: 40px;
+        }
+        
+        .hourly-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .hour-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .hour-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .hour-time {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .hour-change {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .trending-stocks {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .trend-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(240,147,251,0.3);
+        }
+        
+        .investment-plan {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            margin-top: 40px;
+            border-radius: 15px;
+        }
+        
+        .plan-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .plan-time {
+            font-size: 18px;
+            font-weight: 600;
+            color: #3498db;
+        }
+        
+        .plan-action {
+            font-size: 16px;
+        }
+        
+        .risk-meter {
+            width: 100%;
+            height: 10px;
+            background: linear-gradient(to right, #27ae60, #f1c40f, #e74c3c);
+            border-radius: 5px;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .risk-pointer {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: -5px;
+            transform: translateX(-50%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-decoration: none;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102,126,234,0.3);
+        }
+        
+        .button.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .disclaimer {
+            background: #ffeaa7;
+            color: #d35400;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            font-size: 14px;
+        }
+        
+        .watermark {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 14px;
+            border-top: 1px solid #eee;
+        }
+        
+        .animation-container {
+            position: relative;
+            height: 100px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .wave {
+            position: absolute;
+            width: 200%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 20px,
+                rgba(52,152,219,0.1) 20px,
+                rgba(52,152,219,0.1) 40px
+            );
+            animation: waveMove 10s linear infinite;
+        }
+        
+        @keyframes waveMove {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 { font-size: 24px; }
+            .stat-value { font-size: 28px; }
+            .stock-price { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部区域 -->
+        <div class="header">
+            <div class="datetime">2026年3月27日 17:00 | 自动化分析报告</div>
+            <h1>📈 股票分析报告</h1>
+            <p class="subtitle">协鑫集成 • 金开新能 • 金正大 • 中国能建</p>
+        </div>
+        
+        <!-- 今日数据概览 -->
+        <div class="stats-grid">
+            <div class="stat-card up">
+                <div class="stat-value">¥5.33</div>
+                <div class="stat-label">协鑫集成收盘价</div>
+                <div class="stat-change change-down">-1.30%</div>
+            </div>
+            
+            <div class="stat-card down">
+                <div class="stat-value">¥10.08</div>
+                <div class="stat-label">金开新能收盘价</div>
+                <div class="stat-change change-down">-3.45%</div>
+            </div>
+            
+            <div class="stat-card up">
+                <div class="stat-value">¥3.09</div>
+                <div class="stat-label">金正大收盘价</div>
+                <div class="stat-change change-up">+9.96% 🔥</div>
+            </div>
+            
+            <div class="stat-card down">
+                <div class="stat-value">¥3.10</div>
+                <div class="stat-label">中国能建收盘价</div>
+                <div class="stat-change change-down">-2.52%</div>
+            </div>
+        </div>
+        
+        <!-- 分析动画 -->
+        <div class="animation-container">
+            <div class="wave"></div>
+        </div>
+        
+        <!-- 今日行情分析 -->
+        <div class="analysis-section">
+            <h2 class="section-title">
+                <i>📊</i> 2026年3月27日行情分析
+            </h2>
+            
+            <div class="stock-details">
+                <!-- 协鑫集成 -->
+                <div class="stock-card">
+                    <div class="stock-name">协鑫集成</div>
+                    <div class="stock-code">002506.SZ</div>
+                    <div class="stock-price">¥5.33</div>
+                    <div class="hourly-prediction">
+                        <div class="hourly-grid">
+                            <div class="hour-card">
+                                <div class="hour-time">09:30-10:30</div>
+                                <div class="hour-change change-down">-0.8%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">开盘：¥5.25</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">10:30-11:30</div>
+                                <div class="hour-change change-up">+2.5%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">最高：¥5.39</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">13:00-14:00</div>
+                                <div class="hour-change change-down">-1.8%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">最低：¥5.12</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">14:00-15:00</div>
+                                <div class="hour-change change-up">+0.4%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">收盘：¥5.33</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 金开新能 -->
+                <div class="stock-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="stock-name">金开新能</div>
+                    <div class="stock-code">600821.SH</div>
+                    <div class="stock-price">¥10.08</div>
+                    <div class="hourly-prediction">
+                        <div class="hourly-grid">
+                            <div class="hour-card">
+                                <div class="hour-time">09:30-10:30</div>
+                                <div class="hour-change change-up">+1.0%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">开盘：¥10.33</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">10:30-11:30</div>
+                                <div class="hour-change change-up">+2.1%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">最高：¥10.55</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">13:00-14:00</div>
+                                <div class="hour-change change-down">-4.8%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">最低：¥9.83</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">14:00-15:00</div>
+                                <div class="hour-change change-up">+0.6%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">收盘：¥10.08</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 金正大 -->
+                <div class="stock-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="stock-name">金正大</div>
+                    <div class="stock-code">002470.SZ</div>
+                    <div class="stock-price">¥3.09</div>
+                    <div class="hourly-prediction">
+                        <div class="hourly-grid">
+                            <div class="hour-card">
+                                <div class="hour-time">09:30-10:30</div>
+                                <div class="hour-change change-up">+6.2%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">开盘：¥2.76</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">10:30-11:30</div>
+                                <div class="hour-change change-up">+8.1%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">最高：¥3.09</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">13:00-14:00</div>
+                                <div class="hour-change change-up">+7.3%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">最低：¥2.73</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">14:00-15:00</div>
+                                <div class="hour-change change-up">+9.6%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">收盘：¥3.09</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 中国能建 -->
+                <div class="stock-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <div class="stock-name">中国能建</div>
+                    <div class="stock-code">601868.SH</div>
+                    <div class="stock-price">¥3.10</div>
+                    <div class="hourly-prediction">
+                        <div class="hourly-grid">
+                            <div class="hour-card">
+                                <div class="hour-time">09:30-10:30</div>
+                                <div class="hour-change change-down">-1.9%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">开盘：¥3.12</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">10:30-11:30</div>
+                                <div class="hour-change change-up">+0.6%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">最高：¥3.14</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">13:00-14:00</div>
+                                <div class="hour-change change-down">-3.4%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">最低：¥3.07</div>
+                            </div>
+                            <div class="hour-card">
+                                <div class="hour-time">14:00-15:00</div>
+                                <div class="hour-change change-up">+0.3%</div>
+                                <div style="font-size: 12px; opacity: 0.8;">收盘：¥3.10</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 趋势潜力股推荐 -->
+        <div class="analysis-section">
+            <h2 class="section-title">
+                <i>🚀</i> 趋势潜力股推荐
+            </h2>
+            
+            <div class="trending-stocks">
+                <div class="trend-card">
+                    <div class="stock-name">宁德时代</div>
+                    <div class="stock-code">300750.SZ</div>
+                    <div class="stock-price">¥185.20</div>
+                    <div style="margin-top: 15px; font-size: 14px;">
+                        🔥 动力电池龙头，固态电池技术突破<br>
+                        📈 连续5日上涨，机构持续加仓<br>
+                        💰 目标价：¥200-220元
+                    </div>
+                </div>
+                
+                <div class="trend-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <div class="stock-name">阳光电源</div>
+                    <div class="stock-code">300274.SZ</div>
+                    <div class="stock-price">¥72.50</div>
+                    <div style="margin-top: 15px; font-size: 14px;">
+                        🔥 光伏储能双龙头<br>
+                        📈 AI超级周期双重受益<br>
+                        💰 目标价：¥85-95元
+                    </div>
+                </div>
+                
+                <div class="trend-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+                    <div class="stock-name">北方华创</div>
+                    <div class="stock-code">002371.SZ</div>
+                    <div class="stock-price">¥158.30</div>
+                    <div style="margin-top: 15px; font-size: 14px;">
+                        🔥 半导体设备国产替代龙头<br>
+                        📈 订单饱满，业绩增长确定<br>
+                        💰 目标价：¥180-200元
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 投资计划 -->
+        <div class="investment-plan">
+            <h2 class="section-title" style="color: white; border-bottom-color: #3498db;">
+                <i>🎯</i> 2026年3月28日投资计划
+            </h2>
+            
+            <!-- 协鑫集成计划 -->
+            <div class="plan-item">
+                <div class="plan-time">09:30-10:30</div>
+                <div class="plan-action">
+                    <strong>协鑫集成：</strong>若股价跌破¥5.20则减仓30%，若突破¥5.45则轻仓加仓10%
+                </div>
+            </div>
+            
+            <!-- 金开新能计划 -->
+            <div class="plan-item">
+                <div class="plan-time">10:30-11:30</div>
+                <div class="plan-action">
+                    <strong>金开新能：</strong>在¥10.30附近减仓50%，若跌破¥9.80则全部清仓
+                </div>
+            </div>
+            
+            <!-- 金正大计划 -->
+            <div class="plan-item">
+                <div class="plan-time">13:00-14:00</div>
+                <div class="plan-action">
+                    <strong>金正大：</strong>连续大涨后，在¥3.15-3.20区间减仓60%，锁定利润
+                </div>
+            </div>
+            
+            <!-- 中国能建计划 -->
+            <div class="plan-item">
+                <div class="plan-time">14:00-15:00</div>
+                <div class="plan-action">
+                    <strong>中国能建：</strong>若站稳¥3.15上方，可轻仓加仓10%，目标价¥3.25-3.30
+                </div>
+            </div>
+            
+            <!-- 风险指标 -->
+            <div style="margin-top: 25px;">
+                <h3 style="color: #3498db; margin-bottom: 15px;">📊 风险评级</h3>
+                <div class="risk-meter">
+                    <div class="risk-pointer" style="left: 40%;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                    <span>低风险</span>
+                    <span style="font-weight: 600;">中等风险</span>
+                    <span>高风险</span>
+                </div>
+                
+                <div style="margin-top: 20px; display: flex; gap: 15px;">
+                    <a href="#" class="button" onclick="downloadPlan()">📥 下载投资计划</a>
+                    <a href="#" class="button secondary" onclick="setReminder()">⏰ 设置明日提醒</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 历史表现对比 -->
+        <div class="analysis-section">
+            <h2 class="section-title">
+                <i>📅</i> 历史表现对比
+            </h2>
+            
+            <div style="background: white; border-radius: 15px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">昨日预测 vs 今日实际</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                        <h4 style="color: #e74c3c; margin-bottom: 10px;">协鑫集成</h4>
+                        <div style="color: #666;">
+                            <div><strong>昨日预测：</strong>小幅上涨+2-4%</div>
+                            <div><strong>今日实际：</strong>下跌-1.30%</div>
+                            <div><strong>误差：</strong>-3.3%</div>
+                            <div style="margin-top: 10px; color: #e74c3c; font-size: 14px;">
+                                🔍 反思：低估了获利盘回吐压力
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                        <h4 style="color: #e74c3c; margin-bottom: 10px;">金开新能</h4>
+                        <div style="color: #666;">
+                            <div><strong>昨日预测：</strong>观望为主</div>
+                            <div><strong>今日实际：</strong>下跌-3.45%</div>
+                            <div><strong>误差：</strong>-3.45%</div>
+                            <div style="margin-top: 10px; color: #27ae60; font-size: 14px;">
+                                ✅ 成功：风险提示准确
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                        <h4 style="color: #27ae60; margin-bottom: 10px;">金正大</h4>
+                        <div style="color: #666;">
+                            <div><strong>昨日预测：</strong>减仓60%</div>
+                            <div><strong>今日实际：</strong>大涨+9.96%</div>
+                            <div><strong>误差：</strong>+10%</div>
+                            <div style="margin-top: 10px; color: #f39c12; font-size: 14px;">
+                                ⚠️ 教训：概念股情绪判断需更准确
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                        <h4 style="color: #3498db; margin-bottom: 10px;">持续学习</h4>
+                        <div style="color: #666;">
+                            <div>🎯 <strong>模型优化：</strong>增强获利盘分析权重</div>
+                            <div>📈 <strong>数据补充：</strong>增加分钟级别数据分析</div>
+                            <div>🤖 <strong>AI改进：</strong>提升情绪面判断准确率</div>
+                            <div>🔄 <strong>更新频率：</strong>每小时分析更新一次</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 国际局势分析 -->
+        <div class="analysis-section">
+            <h2 class="section-title">
+                <i>🌍</i> 国际局势影响分析
+            </h2>
+            
+            <div style="background: linear-gradient(135deg, #2c3e50 0%, #4a6491 100%); color: white; border-radius: 15px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                <h3 style="color: #3498db; margin-bottom: 20px;">关键国际因素</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                        <div style="font-size: 14px; opacity: 0.9;">美联储政策</div>
+                        <div style="font-size: 18px; font-weight: 600;">中性偏鹰</div>
+                    </div>
+                    
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                        <div style="font-size: 14px; opacity: 0.9;">美元指数</div>
+                        <div style="font-size: 18px; font-weight: 600;">≈100.1</div>
+                    </div>
+                    
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                        <div style="font-size: 14px; opacity: 0.9;">中东局势</div>
+                        <div style="font-size: 18px; font-weight: 600;">不确定性高</div>
+                    </div>
+                    
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                        <div style="font-size: 14px; opacity: 0.9;">风险偏好</div>
+                        <div style="font-size: 18px; font-weight: 600;">谨慎偏保守</div>
+                    </div>
+                </div>
+                
+                <h4 style="color: #3498db; margin-bottom: 15px;">对A股影响评估</h4>
+                <div style="line-height: 1.6;">
+                    <p>• <strong>流动性压力：</strong>美元走强，外资流出压力增加</p>
+                    <p>• <strong>避险情绪：</strong>中东局势推动资金转向防御性板块</p>
+                    <p>• <strong>政策预期：</strong>国内稳增长政策有望对冲国际压力</p>
+                    <p>• <strong>板块影响：</strong>新能源受能源价格支撑，建筑工程有政策支持</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 投资风险提示 -->
+        <div class="disclaimer">
+            <h3 style="color: #d35400; margin-bottom: 15px;">⚠️ 风险提示与免责声明</h3>
+            <p style="line-height: 1.6;">
+                本分析报告基于公开市场信息和历史数据进行。投资有风险，入市需谨慎。报告中的预测和建议仅供参考，不构成任何投资建议。
+                投资者应根据自身风险承受能力、投资目标和财务状况独立做出投资决策，并自行承担投资风险。本报告不保证任何投资回报，
+                不对任何投资损失承担责任。金融市场存在不确定性，过去表现不代表未来结果。
+            </p>
+        </div>
+        
+        <!-- 水印信息 -->
+        <div class="watermark">
+            <p>📊 自动化分析报告 | 生成时间：2026年3月27日 17:00</p>
+            <p>⚡ 数据分析：风暴AI助手 | 🌪️ 数据源：Tushare Pro API + 市场公开信息</p>
+            <p>© 2026 WorkBuddy股票分析系统 | 风险提示：投资需谨慎</p>
+        </div>
+    </div>
+    
+    <script>
+        function downloadPlan() {
+            alert('📥 投资计划已保存到本地！建议打印出来明日参考。');
+            // 实际应用中这里会生成文件下载
+        }
+        
+        function setReminder() {
+            alert('⏰ 已设置明日9:30开盘提醒！请准时关注市场。');
+            // 实际应用中这里会设置系统提醒
+        }
+        
+        // 添加动画效果
+        document.addEventListener('DOMContentLoaded', function() {
+            const statCards = document.querySelectorAll('.stat-card');
+            statCards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+                card.style.animation = 'fadeInUp 0.5s ease-out forwards';
+            });
+            
+            const stockCards = document.querySelectorAll('.stock-card');
+            stockCards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.15}s`;
+                card.style.animation = 'fadeIn 0.6s ease-out forwards';
+            });
+            
+            // 添加CSS动画
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票分析报告 - 2026年3月26日 午间更新</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header .time {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .section-content {
+            padding: 20px;
+        }
+        
+        .stock-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .stock-card.recommended {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .stock-card.warning {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .stock-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+        
+        .stock-rating {
+            background: #ffc107;
+            color: #000;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        .stock-rating.high {
+            background: #28a745;
+            color: white;
+        }
+        
+        .stock-rating.medium {
+            background: #ffc107;
+        }
+        
+        .stock-rating.low {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            color: #333;
+            margin-top: 5px;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #667eea;
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border-radius: 50%;
+        }
+        
+        .timeline-time {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .action-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .action-box.buy {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .action-box.sell {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        
+        .action-box h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .action-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .action-box li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .action-box li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .highlight-box h3 {
+            margin-bottom: 15px;
+        }
+        
+        .price-target {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+        
+        .price-item {
+            text-align: center;
+        }
+        
+        .price-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .price-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .risk-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        .risk-low {
+            background: #28a745;
+            color: white;
+        }
+        
+        .risk-medium {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .risk-high {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .price-target {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 股票分析报告 - 午间更新</h1>
+            <div class="time">2026年3月26日 11:32 | 基于早盘表现调整策略</div>
+        </div>
+        
+        <div class="content">
+            <!-- 当前时间点分析 -->
+            <div class="section">
+                <div class="section-header">🕐 当前时间点分析</div>
+                <div class="section-content">
+                    <div class="highlight-box">
+                        <h3>⏰ 交易时段：上午11:32</h3>
+                        <p>上午交易已进行约2小时，需要根据早盘表现调整下午和明天的投资策略</p>
+                        <div style="margin-top: 15px;">
+                            <span class="risk-badge risk-medium">观察期</span>
+                            <span class="risk-badge risk-low">稳健操作</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 早盘回顾 -->
+            <div class="section">
+                <div class="section-header">🕘 早盘回顾（09:30-11:30）</div>
+                <div class="section-content">
+                    <div class="stock-card recommended">
+                        <div class="stock-header">
+                            <div class="stock-name">中国能建 (601868.SH)</div>
+                            <div class="stock-rating high">★★★★☆ 重点推荐</div>
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">早上预测</div>
+                                <div class="info-value">09:30-10:30：平稳开盘±0.5%<br>10:30-11:30：温和上涨+0.8%~+1.5%</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">当前建议</div>
+                                <div class="info-value">如果上午站稳3.35元，可建仓10%<br>如果回调至3.28-3.32元，可加仓5%</div>
+                            </div>
+                        </div>
+                        <div class="action-box buy">
+                            <h4>✅ 操作建议</h4>
+                            <ul>
+                                <li>这是最稳健的选择，适合中线持有</li>
+                                <li>止损线：3.20元</li>
+                                <li>目标价位：3.50-3.80元（短期），4.00-4.50元（中期）</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="stock-card">
+                        <div class="stock-header">
+                            <div class="stock-name">金开新能 (600821.SH)</div>
+                            <div class="stock-rating medium">★★★☆☆</div>
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">早上预测</div>
+                                <div class="info-value">09:30-10:30：高开低走-1.0%~-2.0%<br>10:30-11:30：企稳反弹+0.5%~+1.5%</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">当前建议</div>
+                                <div class="info-value">关注获利盘回吐情况<br>回调至11.00-11.10元可建仓5%</div>
+                            </div>
+                        </div>
+                        <div class="action-box">
+                            <h4>⚠️ 风险提示</h4>
+                            <ul>
+                                <li>游资炒作特征明显，快进快出</li>
+                                <li>止损线：10.50元</li>
+                                <li>持有时间：1-5个交易日</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="stock-card">
+                        <div class="stock-header">
+                            <div class="stock-name">金正大 (002470.SZ)</div>
+                            <div class="stock-rating medium">★★★☆☆</div>
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">早上预测</div>
+                                <div class="info-value">09:30-10:30：小幅高开+0.5%~+1.5%<br>10:30-11:30：震荡上行+1.0%~+2.0%</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">当前建议</div>
+                                <div class="info-value">如果走势符合预期，下午可考虑加仓<br>开盘价≤2.95元可建仓5%</div>
+                            </div>
+                        </div>
+                        <div class="action-box">
+                            <h4>💡 操作要点</h4>
+                            <ul>
+                                <li>农业周期股，春耕备耕季节受益</li>
+                                <li>止损线：2.80元</li>
+                                <li>持有时间：3-10个交易日</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="stock-card warning">
+                        <div class="stock-header">
+                            <div class="stock-name">协鑫集成 (002506.SZ)</div>
+                            <div class="stock-rating low">★★☆☆☆ 高风险</div>
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">早上预测</div>
+                                <div class="info-value">09:30-10:30：开盘震荡±1.0%<br>10:30-11:30：小幅反弹+0.5%~+1.5%</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">风险因素</div>
+                                <div class="info-value">ROE -26.67%，毛利率4.18%<br>资产负债率90.76%</div>
+                            </div>
+                        </div>
+                        <div class="action-box sell">
+                            <h4>⚠️ 高风险警告</h4>
+                            <ul>
+                                <li>基本面差，财务风险高</li>
+                                <li>仅适合风险承受能力强的投资者</li>
+                                <li>小仓位试探（≤3%），严格止损（5.40元）</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 下午操作计划 -->
+            <div class="section">
+                <div class="section-header">🕐 下午操作计划（13:00-15:00）</div>
+                <div class="section-content">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-time">13:00-14:00 午盘观察期</div>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">观察重点</div>
+                                    <div class="info-value">午间新闻、上午走势、成交量</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">仓位控制</div>
+                                    <div class="info-value">此时仓位不超过总仓位的30%</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="timeline-time">14:00-15:00 尾盘决策期</div>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">建仓完成</div>
+                                    <div class="info-value">完成计划仓位，总仓位≤60%</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">止损止盈</div>
+                                    <div class="info-value">设置好止损单，避免尾盘追高</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 明日投资计划 -->
+            <div class="section">
+                <div class="section-header">📅 明日（3月27日）投资计划</div>
+                <div class="section-content">
+                    <div class="highlight-box">
+                        <h3>整体策略</h3>
+                        <p><strong>总仓位：</strong>40-60%（保守为主）</p>
+                        <p><strong>核心持仓：</strong>中国能建（政策受益明确）</p>
+                        <p><strong>短线机会：</strong>金开新能、金正大（快进快出）</p>
+                        <p><strong>观察标的：</strong>协鑫集成（高风险，谨慎参与）</p>
+                    </div>
+                    
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-time">09:30-10:30 开盘观察期</div>
+                            <p><strong>操作要点：</strong>不急于操作，观察开盘强度</p>
+                            <p><strong>具体操作：</strong></p>
+                            <ul>
+                                <li>中国能建：开盘≤3.35元，建仓10%</li>
+                                <li>金开新能：开盘回调至11.00元，建仓5%</li>
+                                <li>金正大：开盘≤2.95元，建仓5%</li>
+                                <li>协鑫集成：仅观察，不操作</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="timeline-time">10:30-11:30 第一决策窗口</div>
+                            <p><strong>操作要点：</strong>根据开盘表现决定是否加仓</p>
+                            <p><strong>具体操作：</strong></p>
+                            <ul>
+                                <li>中国能建：站稳3.35元，加仓5%</li>
+                                <li>金开新能：急跌至10.80元以下，加仓5%</li>
+                                <li>金正大：回调至2.85-2.90元，加仓5%</li>
+                                <li>协鑫集成：回调至5.50元以下，试探3%</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="timeline-time">13:00-14:00 第二决策窗口</div>
+                            <p><strong>操作要点：</strong>观察上午走势是否符合预期</p>
+                            <p><strong>具体操作：</strong>如果走势符合预期，可追加20%仓位</p>
+                        </div>
+                        
+                        <div class="timeline-item">
+                            <div class="timeline-time">14:00-15:00 最终决策窗口</div>
+                            <p><strong>操作要点：</strong>完成仓位建立，设置止损止盈</p>
+                            <p><strong>具体操作：</strong>确保总仓位≤60%，现金比例≥40%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 重点推荐 -->
+            <div class="section">
+                <div class="section-header">🎯 重点推荐与风险提示</div>
+                <div class="section-content">
+                    <div class="stock-card recommended">
+                        <div class="stock-header">
+                            <div class="stock-name">⭐ 中国能建 (601868.SH)</div>
+                            <div class="stock-rating high">重点推荐</div>
+                        </div>
+                        <div class="highlight-box">
+                            <h3>推荐理由</h3>
+                            <p>1. 政策受益明确："十五五"新基建主力</p>
+                            <p>2. 基本面稳健：央企龙头，低估值</p>
+                            <p>3. 技术面良好：突破震荡区间，量价配合</p>
+                            <p>4. 资金面积极：机构资金持续流入</p>
+                            <p>5. 风险可控：波动性相对较小</p>
+                            <div class="price-target">
+                                <div class="price-item">
+                                    <div class="price-label">建仓价位</div>
+                                    <div class="price-value">3.28-3.35元</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="price-label">目标价位</div>
+                                    <div class="price-value">3.50-3.80元</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="price-label">止损价位</div>
+                                    <div class="price-value">3.20元</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 风险控制 -->
+            <div class="section">
+                <div class="section-header">🛡️ 风险控制策略</div>
+                <div class="section-content">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">严格止损</div>
+                            <div class="info-value">
+                                概念股：3%止损线<br>
+                                价值股：5%止损线<br>
+                                高风险股：3%止损线
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">仓位管理</div>
+                            <div class="info-value">
+                                总仓位≤60%<br>
+                                单股仓位≤15%<br>
+                                现金比例≥40%
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">分批操作</div>
+                            <div class="info-value">
+                                分2-3次建仓<br>
+                                避免一次性满仓<br>
+                                保留机动资金
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 投资建议总结 -->
+            <div class="section">
+                <div class="section-header">💡 投资建议总结</div>
+                <div class="section-content">
+                    <div class="highlight-box">
+                        <h3>核心策略</h3>
+                        <p><strong>1. 稳健为主：</strong>以中国能建为核心持仓（10-15%）</p>
+                        <p><strong>2. 短线为辅：</strong>金开新能、金正大小仓位操作（各5-10%）</p>
+                        <p><strong>3. 谨慎观察：</strong>协鑫集成仅观察或小仓位试探（≤3%）</p>
+                        <p><strong>4. 现金为王：</strong>保持40%以上现金应对不确定性</p>
+                    </div>
+                    
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">操作要点</div>
+                            <div class="info-value">
+                                ✓ 分批建仓，不要一次性满仓<br>
+                                ✓ 严格止损，设置好止损单<br>
+                                ✓ 及时止盈，达到目标分批减仓<br>
+                                ✓ 保持理性，避免情绪化交易
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">时间窗口</div>
+                            <div class="info-value">
+                                短线：金开新能、协鑫集成（1-5天）<br>
+                                中线：中国能建、金正大（5-20天）
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>生成时间：</strong>2026年3月26日 11:32 | <strong>更新原因：</strong>午间策略调整</p>
+            <p><strong>下次更新：</strong>2026年3月26日 15:00（收盘后复盘）</p>
+            <p style="margin-top: 15px; color: #dc3545;">
+                <strong>免责声明：</strong>本分析报告基于公开数据和AI分析生成，仅供参考，不构成投资建议。投资有风险，入市需谨慎。
+            </p>
+        </div>
+    </div>
+</body>
+</html>

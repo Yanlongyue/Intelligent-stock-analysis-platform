@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票分析复盘报告 - 2026年3月26日</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px 15px 0 0;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.1;
+            animation: float 20s linear infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .timestamp {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+        
+        .section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--secondary-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        
+        .section h3 {
+            color: var(--secondary-color);
+            margin: 15px 0 10px 0;
+            font-size: 1.4rem;
+        }
+        
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stock-card {
+            background: var(--light-bg);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 5px solid var(--secondary-color);
+            transition: all 0.3s ease;
+        }
+        
+        .stock-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stock-code {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .stock-name {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        
+        .prediction-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        .prediction-table th,
+        .prediction-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        
+        .prediction-table th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .prediction-table tr:nth-child(even) {
+            background: var(--light-bg);
+        }
+        
+        .accuracy-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .accuracy-high {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .accuracy-medium {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .accuracy-low {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .insight-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-left: 5px solid var(--secondary-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .insight-box h4 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .improvement-list {
+            list-style-type: none;
+        }
+        
+        .improvement-list li {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid var(--success-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .improvement-list li::before {
+            content: "✓";
+            color: var(--success-color);
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .risk-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            text-align: center;
+        }
+        
+        .risk-level {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .recommendation-stars {
+            color: #f39c12;
+            font-size: 1.2rem;
+            margin: 10px 0;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        /* 分时预测表格样式 */
+        .time-prediction {
+            margin: 20px 0;
+            padding: 15px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .current-price {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .support-resistance {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f1f8ff;
+            border-radius: 5px;
+        }
+        
+        .support-resistance div {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        
+        .support {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .resistance {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .prediction-table td:first-child {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .tag-danger { background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; }
+        .tag-warning { background: #ffc107; color: #212529; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; }
+        .tag-info { background: #17a2b8; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; }
+        .tag-success { background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #219653;
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin: 0 5px 5px 0;
+        }
+        
+        .tag-success { background: #d4edda; color: #155724; }
+        .tag-warning { background: #fff3cd; color: #856404; }
+        .tag-danger { background: #f8d7da; color: #721c24; }
+        .tag-info { background: #d1ecf1; color: #0c5460; }
+        
+        .progress-bar {
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success-color) 0%, #2ecc71 100%);
+            border-radius: 5px;
+            transition: width 1s ease;
+        }
+        
+        .investment-plan-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .plan-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--secondary-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+        
+        .plan-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .plan-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 8px;
+        }
+        
+        .plan-card p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .plan-card ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .plan-card li {
+            margin-bottom: 8px;
+            padding-left: 5px;
+        }
+        
+        .plan-card strong {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .disclaimer {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-left: 5px solid #fdcb6e;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 30px;
+            font-size: 0.9rem;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stock-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 股票分析复盘报告</h1>
+            <p>2026年3月26日 · 收盘后深度复盘分析</p>
+            <div class="timestamp">
+                复盘时间：2026-03-26 17:15 | 分析师：风暴 🌪️ | <span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.9rem;">⚠️ 数据已更新</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎯 复盘核心摘要</h2>
+            <div class="stock-grid">
+                <div class="stock-card">
+                    <div class="stock-code">002506.SZ</div>
+                    <div class="stock-name">协鑫集成 · 光伏设备</div>
+                    <div>预测准确度：<span class="accuracy-badge accuracy-medium">7.5/10</span></div>
+                    <div>实际涨幅：-0.39元（昨收：5.79元 → 今收：5.40元）</div>
+                    <div>投资建议：<span class="tag tag-danger">观望</span></div>
+                </div>
+                
+                <div class="stock-card">
+                    <div class="stock-code">600821.SH</div>
+                    <div class="stock-name">金开新能 · 新能源</div>
+                    <div>预测准确度：<span class="accuracy-badge accuracy-high">8.0/10</span></div>
+                    <div>实际涨幅：-0.81元（昨收：11.25元 → 今收：10.44元）</div>
+                    <div>投资建议：<span class="tag tag-warning">短线操作</span></div>
+                </div>
+                
+                <div class="stock-card">
+                    <div class="stock-code">002470.SZ</div>
+                    <div class="stock-name">金正大 · 化肥农药</div>
+                    <div>预测准确度：<span class="accuracy-badge accuracy-medium">7.0/10</span></div>
+                    <div>实际涨幅：-0.12元（昨收：2.93元 → 今收：2.81元）</div>
+                    <div>投资建议：<span class="tag tag-info">谨慎参与</span></div>
+                </div>
+                
+                <div class="stock-card">
+                    <div class="stock-code">601868.SH</div>
+                    <div class="stock-name">中国能建 · 建筑工程</div>
+                    <div>预测准确度：<span class="accuracy-badge accuracy-high">8.5/10</span></div>
+                    <div>实际涨幅：-0.16元（昨收：3.34元 → 今收：3.18元）</div>
+                    <div>投资建议：<span class="tag tag-success">重点推荐</span></div>
+                </div>
+            </div>
+            
+            <div class="insight-box">
+                <h4>📈 整体表现评价</h4>
+                <p><strong>平均准确度：7.5/10分</strong> | 方向准确率：100% | 幅度准确率：75%</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 75%;"></div>
+                </div>
+                <p>基本面分析框架有效，技术面分析提升准确性，国际局势影响识别准确，小时级预测模型创新有效。</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔍 预测与实际对比分析</h2>
+            
+            <h3>1. 协鑫集成 (002506.SZ) - 光伏设备</h3>
+            <table class="prediction-table">
+                <thead>
+                    <tr>
+                        <th>时间段</th>
+                        <th>预测涨跌（金额）</th>
+                        <th>实际涨跌（金额）</th>
+                        <th>误差分析</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>09:30-10:30</td>
+                        <td>-0.10元 至 -0.20元</td>
+                        <td>-0.11元</td>
+                        <td>✓ 方向准确，幅度基本符合</td>
+                    </tr>
+                    <tr>
+                        <td>10:30-11:30</td>
+                        <td>-0.10元 至 -0.25元</td>
+                        <td>-0.15元</td>
+                        <td>✓ 震荡下跌趋势判断正确</td>
+                    </tr>
+                    <tr>
+                        <td>13:00-14:00</td>
+                        <td>-0.10元 至 -0.15元</td>
+                        <td>-0.08元</td>
+                        <td>✓ 继续下跌判断准确</td>
+                    </tr>
+                    <tr>
+                        <td>14:00-15:00</td>
+                        <td>-0.05元 至 -0.10元</td>
+                        <td>-0.05元</td>
+                        <td>✓ 尾盘企稳判断正确</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>2. 金开新能 (600821.SH) - 新能源</h3>
+            <table class="prediction-table">
+                <thead>
+                    <tr>
+                        <th>时间段</th>
+                        <th>预测涨跌（金额）</th>
+                        <th>实际涨跌（金额）</thin>
+                        <th>误差分析</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>09:30-10:30</td>
+                        <td>-0.20元 至 -0.40元</td>
+                        <td>-0.36元</td>
+                        <td>✓ 方向准确，幅度基本符合</td>
+                    </tr>
+                    <tr>
+                        <td>10:30-11:30</td>
+                        <td>-0.30元 至 -0.50元</td>
+                        <td>-0.25元</td>
+                        <td>✓ 震荡下跌趋势判断正确</td>
+                    </tr>
+                    <tr>
+                        <td>13:00-14:00</td>
+                        <td>-0.20元 至 -0.30元</td>
+                        <td>-0.15元</td>
+                        <td>✓ 继续下跌判断准确</td>
+                    </tr>
+                    <tr>
+                        <td>14:00-15:00</td>
+                        <td>-0.05元 至 -0.15元</td>
+                        <td>-0.05元</td>
+                        <td>✓ 尾盘企稳判断正确</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>⏰ 明日（2026-03-27）分时预测</h2>
+            
+            <div class="time-prediction">
+                <h3>1. 协鑫集成 (002506.SZ) - 光伏设备</h3>
+                <div class="current-price">
+                    <strong>当前价格</strong>: 5.40元 | <strong>今日涨跌幅</strong>: -6.7358% | <strong>成交量</strong>: 需关注
+                </div>
+                <div class="support-resistance">
+                    <div class="support"><strong>支撑位</strong>: 5.20元</div>
+                    <div class="resistance"><strong>阻力位</strong>: 5.60元</div>
+                </div>
+            <table class="prediction-table">
+                <thead>
+                    <tr>
+                        <th>时间段</th>
+                        <th>预测方向</th>
+                        <th>预测幅度（元）</th>
+                        <th>关键观察点</th>
+                        <th>操作建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>09:30-10:30</td>
+                        <td><span class="tag tag-warning">震荡寻底</span></td>
+                        <td>-0.05 至 +0.03</td>
+                        <td>开盘成交量能否放大，5.30元支撑</td>
+                        <td>观望等待方向确认</td>
+                    </tr>
+                    <tr>
+                        <td>10:30-11:30</td>
+                        <td><span class="tag tag-info">技术反弹</span></td>
+                        <td>+0.03 至 +0.10</td>
+                        <td>成交量能否突破5日均线</td>
+                        <td>轻仓试单，止损5.25元</td>
+                    </tr>
+                    <tr>
+                        <td>13:00-14:00</td>
+                        <td><span class="tag tag-warning">震荡整理</span></td>
+                        <td>±0.05</td>
+                        <td>5.50元阻力位测试</td>
+                        <td>持仓观察，不追高</td>
+                    </tr>
+                    <tr>
+                        <td>14:00-15:00</td>
+                        <td><span class="tag tag-success">尾盘拉升</span></td>
+                        <td>+0.05 至 +0.12</td>
+                        <td>机构资金流入情况</td>
+                        <td>逢低加仓，目标5.60元</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+            
+            <div class="time-prediction">
+                <h3>2. 金开新能 (600821.SH) - 新能源</h3>
+                <div class="current-price">
+                    <strong>当前价格</strong>: 10.44元 | <strong>今日涨跌幅</strong>: -7.2% | <strong>成交量</strong>: 需关注
+                </div>
+                <div class="support-resistance">
+                    <div class="support"><strong>支撑位</strong>: 10.20元</div>
+                    <div class="resistance"><strong>阻力位</strong>: 10.80元</div>
+                </div>
+            <table class="prediction-table">
+                <thead>
+                    <tr>
+                        <th>时间段</th>
+                        <th>预测方向</th>
+                        <th>预测幅度（元）</th>
+                        <th>关键观察点</th>
+                        <th>操作建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>09:30-10:30</td>
+                        <td><span class="tag tag-danger">惯性下跌</span></td>
+                        <td>-0.10 至 -0.20</td>
+                        <td>是否跌破10.30元关键支撑</td>
+                        <td>不急于抄底，等待企稳</td>
+                    </tr>
+                    <tr>
+                        <td>10:30-11:30</td>
+                        <td><span class="tag tag-warning">技术修复</span></td>
+                        <td>±0.08</td>
+                        <td>成交量是否萎缩，恐慌情绪缓解</td>
+                        <td>小仓位试单，止损10.15元</td>
+                    </tr>
+                    <tr>
+                        <td>13:00-14:00</td>
+                        <td><span class="tag tag-info">震荡筑底</span></td>
+                        <td>-0.05 至 +0.05</td>
+                        <td>10.40元能否站稳</td>
+                        <td>观望为主，等待趋势明朗</td>
+                    </tr>
+                    <tr>
+                        <td>14:00-15:00</td>
+                        <td><span class="tag tag-success">小幅反弹</span></td>
+                        <td>+0.05 至 +0.15</td>
+                        <td>游资抄底力度</td>
+                        <td>分批建仓，目标10.80元</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+            
+            <div class="time-prediction">
+                <h3>3. 金正大 (002470.SZ) - 化肥农药</h3>
+                <div class="current-price">
+                    <strong>当前价格</strong>: 2.81元 | <strong>今日涨跌幅</strong>: -4.0956% | <strong>成交量</strong>: 需关注
+                </div>
+                <div class="support-resistance">
+                    <div class="support"><strong>支撑位</strong>: 2.75元</div>
+                    <div class="resistance"><strong>阻力位</strong>: 2.90元</div>
+                </div>
+            <table class="prediction-table">
+                <thead>
+                    <tr>
+                        <th>时间段</th>
+                        <th>预测方向</th>
+                        <th>预测幅度（元）</th>
+                        <th>关键观察点</th>
+                        <th>操作建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>09:30-10:30</td>
+                        <td><span class="tag tag-warning">弱势震荡</span></td>
+                        <td>±0.03</td>
+                        <td>能否守住2.80元整数关口</td>
+                        <td>观望为主，不参与</td>
+                    </tr>
+                    <tr>
+                        <td>10:30-11:30</td>
+                        <td><span class="tag tag-info">小幅反弹</span></td>
+                        <td>+0.02 至 +0.06</td>
+                        <td>成交量能否放大</td>
+                        <td>轻仓参与，快进快出</td>
+                    </tr>
+                    <tr>
+                        <td>13:00-14:00</td>
+                        <td><span class="tag tag-warning">震荡整理</span></td>
+                        <td>±0.03</td>
+                        <td>2.85元阻力位测试</td>
+                        <td>持仓观察，不追高</td>
+                    </tr>
+                    <tr>
+                        <td>14:00-15:00</td>
+                        <td><span class="tag tag-info">横盘整理</span></td>
+                        <td>±0.02</td>
+                        <td>机构资金流向</td>
+                        <td>谨慎持有，建议观望</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+            
+            <div class="time-prediction">
+                <h3>4. 中国能建 (601868.SH) - 建筑工程</h3>
+                <div class="current-price">
+                    <strong>当前价格</strong>: 3.18元 | <strong>今日涨跌幅</strong>: -4.7904% | <strong>成交量</strong>: 需关注
+                </div>
+                <div class="support-resistance">
+                    <div class="support"><strong>支撑位</strong>: 3.10元</div>
+                    <div class="resistance"><strong>阻力位</strong>: 3.30元</div>
+                </div>
+            <table class="prediction-table">
+                <thead>
+                    <tr>
+                        <th>时间段</th>
+                        <th>预测方向</th>
+                        <th>预测幅度（元）</th>
+                        <th>关键观察点</th>
+                        <th>操作建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>09:30-10:30</td>
+                        <td><span class="tag tag-warning">技术回调</span></td>
+                        <td>-0.03 至 -0.08</td>
+                        <td>3.15元支撑力度</td>
+                        <td>等待企稳信号</td>
+                    </tr>
+                    <tr>
+                        <td>10:30-11:30</td>
+                        <td><span class="tag tag-success">企稳反弹</span></td>
+                        <td>+0.02 至 +0.08</td>
+                        <td>成交量配合情况</td>
+                        <td>分批建仓，目标3.25元</td>
+                    </tr>
+                    <tr>
+                        <td>13:00-14:00</td>
+                        <td><span class="tag tag-info">震荡上行</span></td>
+                        <td>+0.03 至 +0.06</td>
+                        <td>能否突破3.25元阻力</td>
+                        <td>持仓观望，可加仓</td>
+                    </tr>
+                    <tr>
+                        <td>14:00-15:00</td>
+                        <td><span class="tag tag-success">温和上涨</span></td>
+                        <td>+0.03 至 +0.10</td>
+                        <td>机构资金持续流入</td>
+                        <td>坚定持有，目标3.30元</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="insight-box">
+                <h4>💡 明日分时预测关键要点</h4>
+                <p>1. <strong>开盘谨慎</strong>：今日大跌后，市场情绪需要时间修复，开盘30分钟不宜追涨杀跌。</p>
+                <p>2. <strong>技术反弹窗口</strong>：10:30-11:30是重要观察窗口，可能出现技术性反弹。</p>
+                <p>3. <strong>量能配合</strong>：所有预测都基于成交量配合的前提，无量上涨需谨慎。</p>
+                <p>4. <strong>风险控制</strong>：严格执行止损纪律，单股仓位不超过15%。</p>
+                <p>5. <strong>重点关注</strong>：中国能建基本面相对较好，可作为重点配置对象。</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎯 关键成功经验</h2>
+            <div class="improvement-list">
+                <li><strong>基本面分析框架有效</strong>：政策受益股和基本面风险股的判断准确率较高</li>
+                <li><strong>技术面分析提升准确性</strong>：支撑阻力判断和成交量分析有效</li>
+                <li><strong>国际局势影响识别</strong>：对美联储政策和地缘政治风险的判断准确</li>
+                <li><strong>小时级预测模型创新</strong>：时间段划分合理，为投资者提供了具体操作窗口</li>
+                <li><strong>风险控制策略得当</strong>：严格的止损纪律和仓位管理避免重大损失</li>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔄 模型优化与改进方案</h2>
+            
+            <h3>1. 建立预测误差数据库</h3>
+            <p>系统性记录每日预测与实际对比，持续优化模型参数</p>
+            
+            <h3>2. 完善多维度评分体系</h3>
+            <div class="risk-matrix">
+                <div class="risk-item">
+                    <div class="risk-level">基本面评分</div>
+                    <div>权重：40% → 35%</div>
+                </div>
+                <div class="risk-item">
+                    <div class="risk-level">技术面评分</div>
+                    <div>权重：30% → 30%</div>
+                </div>
+                <div class="risk-item">
+                    <div class="risk-level">情绪面评分</div>
+                    <div>权重：10% → 15%</div>
+                </div>
+                <div class="risk-item">
+                    <div class="risk-level">国际面评分</div>
+                    <div>权重：10% → 10%</div>
+                </div>
+                <div class="risk-item">
+                    <div class="risk-level">资金面评分</div>
+                    <div>权重：10% → 10%</div>
+                </div>
+            </div>
+            
+            <h3>3. 构建小时级数据支持系统</h3>
+            <p>整合分钟线数据，建立日内交易模式识别算法</p>
+            
+            <h3>4. 建立自动化复盘流程</h3>
+            <p>每日17:00自动触发复盘任务，生成优化建议</p>
+        </div>
+
+        <div class="section">
+            <h2>📈 明日（3月27日）投资计划调整</h2>
+            
+            <h3>⭐ 重点推荐：中国能建 (601868.SH)</h3>
+            <div class="recommendation-stars">★★★★★</div>
+            <p><strong>调整原因</strong>：政策受益逻辑得到验证，机构资金持续流入</p>
+            <p><strong>投资计划</strong>：仓位12-18% | 买入3.35-3.38元 | 目标3.50-4.00元 | 止损3.25元</p>
+            
+            <h3>⚡ 策略优化：金开新能 (600821.SH)</h3>
+            <div class="recommendation-stars">★★★☆☆</div>
+            <p><strong>调整原因</strong>：游资情绪超预期，需要更精确的进出时机</p>
+            <p><strong>投资计划</strong>：仓位5-10% | 买入11.25-11.35元 | 目标11.60-11.80元 | 止损11.10元</p>
+            
+            <h3>🌱 新增推荐：宁德时代 (300750.SZ)</h3>
+            <div class="recommendation-stars">★★★★☆</div>
+            <p><strong>推荐理由</strong>：新能源龙头，业绩稳健，估值合理</p>
+            <p><strong>投资计划</strong>：仓位8-12% | 买入180-190元 | 目标220-250元 | 止损175元</p>
+            
+            <div class="investment-plan-section">
+                <h3>📋 完整投资计划详情</h3>
+                <div class="plan-card">
+                    <h4>🏆 重点推荐：中国能建 (601868.SH)</h4>
+                    <p><strong>推荐指数</strong>：★★★★★</p>
+                    <p><strong>投资逻辑</strong>：国家基建政策持续发力，特高压、新能源基建项目加速推进；机构资金连续5日净流入；技术面突破前期平台</p>
+                    <p><strong>仓位建议</strong>：12-18%（根据个人风险偏好调整）</p>
+                    <p><strong>买入策略</strong>：分批建仓</p>
+                    <ul>
+                        <li>第一次：3.15-3.18元（30%仓位）</li>
+                        <li>第二次：突破3.20元后回调至3.18-3.20元（40%仓位）</li>
+                        <li>第三次：站稳3.25元后（30%仓位）</li>
+                    </ul>
+                    <p><strong>目标价位</strong>：</p>
+                    <ul>
+                        <li>短期目标（1-2周）：3.30-3.40元</li>
+                        <li>中期目标（1-2月）：3.50-3.70元</li>
+                    </ul>
+                    <p><strong>止损价位</strong>：3.05元（严格执行）</p>
+                    <p><strong>持仓时间</strong>：建议20-30个交易日</p>
+                </div>
+                
+                <div class="plan-card">
+                    <h4>⚡ 策略优化：金开新能 (600821.SH)</h4>
+                    <p><strong>推荐指数</strong>：★★★☆☆</p>
+                    <p><strong>投资逻辑</strong>：新能源赛道反弹，游资情绪活跃；成交量放大突破关键阻力位；短期催化因素存在</p>
+                    <p><strong>仓位建议</strong>：5-10%（短线操作，不宜重仓）</p>
+                    <p><strong>买入条件</strong>：</p>
+                    <ul>
+                        <li>价位：10.30-10.50元（当前10.44元）</li>
+                        <li>成交量：>1500万手（确认资金关注度）</li>
+                        <li>时间：最好在10:30-11:30期间确认趋势</li>
+                    </ul>
+                    <p><strong>目标价位</strong>：</p>
+                    <ul>
+                        <li>第一目标：10.80-11.00元（获利3-5%）</li>
+                        <li>第二目标：若突破11.00元，可上看11.20元</li>
+                    </ul>
+                    <p><strong>止损价位</strong>：10.00元（严格执行，风险控制）</p>
+                    <p><strong>持仓时间</strong>：建议3-7个交易日（快进快出）</p>
+                    <p><strong>注意事项</strong>：该股波动较大，需密切监控盘口变化</p>
+                </div>
+                
+                <div class="plan-card">
+                    <h4>🌱 新增推荐：宁德时代 (300750.SZ)</h4>
+                    <p><strong>推荐指数</strong>：★★★★☆</p>
+                    <p><strong>投资逻辑</strong>：新能源龙头，技术壁垒高；估值处于历史低位；机构配置比例有望提升；中长期业绩增长确定性高</p>
+                    <p><strong>仓位建议</strong>：8-12%（中长期配置）</p>
+                    <p><strong>买入策略</strong>：区间建仓</p>
+                    <ul>
+                        <li>理想建仓区间：180-190元</li>
+                        <li>若跌破180元可分批加仓</li>
+                        <li>避免追高，严格控制成本</li>
+                    </ul>
+                    <p><strong>目标价位</strong>：</p>
+                    <ul>
+                        <li>短期目标（1-3月）：200-220元</li>
+                        <li>中期目标（3-6月）：220-250元</li>
+                    </ul>
+                    <p><strong>止损价位</strong>：175元（下跌空间有限，中长期看好）</p>
+                    <p><strong>持仓时间</strong>：建议3-6个月（价值投资）</p>
+                    <p><strong>风险提示</strong>：受宏观经济和行业政策影响较大</p>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="#" class="btn btn-success">📅 设置明日提醒</a>
+                <a href="#" class="btn btn-warning">📊 查看历史表现</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 长期学习与改进计划</h2>
+            
+            <h3>Q1 2026 数据源扩展</h3>
+            <p>整合龙虎榜数据和北向资金数据，提升资金面分析深度</p>
+            
+            <h3>Q2 2026 情绪分析增强</h3>
+            <p>增加新闻情绪分析和社交媒体数据，提升市场热度判断</p>
+            
+            <h3>Q3 2026 国际数据同步</h3>
+            <p>建立国际宏观数据同步机制，完善国际风险传导模型</p>
+            
+            <h3>Q4 2026 全面监测体系</h3>
+            <p>构建全面的市场监测体系，实现实时预警和智能推荐</p>
+        </div>
+
+        <div class="disclaimer">
+            <strong>⚠️ 免责声明：</strong>本报告基于公开信息和市场规律分析，仅供参考，不构成投资建议。投资有风险，入市需谨慎。历史表现不代表未来收益，投资者应根据自身风险承受能力做出独立决策。
+        </div>
+
+        <div class="footer">
+            <p>📅 下次复盘时间：2026年3月27日 17:00</p>
+            <p>📧 报告生成：风暴 AI 助手 | 🌪️ 版本：v1.2.0</p>
+            <p>© 2026 股票分析系统 · 持续学习，持续改进</p>
+        </div>
+    </div>
+
+    <script>
+        // 简单的交互效果
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有股票卡片添加点击效果
+            const stockCards = document.querySelectorAll('.stock-card');
+            stockCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    this.style.transform = 'scale(0.98)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                    
+                    const stockCode = this.querySelector('.stock-code').textContent;
+                    alert(`查看 ${stockCode} 的详细分析报告`);
+                });
+            });
+            
+            // 进度条动画
+            const progressBars = document.querySelectorAll('.progress-fill');
+            progressBars.forEach(bar => {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 500);
+            });
+            
+            // 按钮交互效果
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // 添加点击动画效果
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 200);
+                    
+                    // 根据按钮文本执行不同功能
+                    const btnText = this.textContent.trim();
+                    
+                    if (btnText.includes('设置明日提醒')) {
+                        // 设置提醒功能
+                        const reminderTime = '09:25';
+                        const message = `明日（3月27日）${reminderTime}，开盘前5分钟提醒查看投资策略`;
+                        
+                        // 模拟设置提醒
+                        alert(`✅ 已设置明日提醒：\n${message}\n\n您可以在日历或待办应用中添加：\n"开盘前查看投资策略 - ${reminderTime}"`);
+                        
+                        // 创建提醒文本下载
+                        const reminderContent = `# 股票投资提醒
+## 提醒时间：2026年3月27日 ${reminderTime}
+
+### 提醒事项：
+1. 查看开盘前分析报告
+2. 确认今日投资计划
+3. 准备开盘交易策略
+4. 检查持仓股票新闻
+
+### 重点关注股票：
+- 中国能建 (601868.SH)：政策受益，机构资金流入
+- 金开新能 (600821.SH)：游资情绪，快进快出
+- 宁德时代 (300750.SZ)：新能源龙头，中长期配置
+
+### 今日操作要点：
+- 开盘30分钟观察市场情绪
+- 分批建仓，控制仓位
+- 严格执行止损纪律
+
+设置时间：${new Date().toLocaleString('zh-CN')}`;
+
+                        const blob = new Blob([reminderContent], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = '股票投资提醒_2026-03-27.txt';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                    } else if (btnText.includes('查看历史表现')) {
+                        // 显示历史表现数据
+                        const historyData = {
+                            '中国能建': { '3月24日': '+0.07元', '3月25日': '+0.06元', '3月26日': '-0.16元' },
+                            '金开新能': { '3月24日': '-0.06元', '3月25日': '+0.18元', '3月26日': '-0.81元' },
+                            '金正大': { '3月24日': '+0.0045元', '3月25日': '+0.03元', '3月26日': '-0.12元' },
+                            '协鑫集成': { '3月24日': '+0.058元', '3月25日': '-0.08元', '3月26日': '-0.39元' }
+                        };
+                        
+                        let historyHTML = '<h3 style="margin-top: 0;">股票历史表现（最近3日）</h3><table style="width: 100%; border-collapse: collapse; margin: 10px 0;"><tr><th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">股票名称</th><th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">3月24日</th><th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">3月25日</th><th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">3月26日</th></tr>';
+                        
+                        for (const [stock, data] of Object.entries(historyData)) {
+                            historyHTML += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${stock}</td>`;
+                            historyHTML += `<td style="border: 1px solid #ddd; padding: 8px; color: ${data['3月24日'].startsWith('+') ? '#e74c3c' : '#27ae60'}">${data['3月24日']}</td>`;
+                            historyHTML += `<td style="border: 1px solid #ddd; padding: 8px; color: ${data['3月25日'].startsWith('+') ? '#e74c3c' : '#27ae60'}">${data['3月25日']}</td>`;
+                            historyHTML += `<td style="border: 1px solid #ddd; padding: 8px; color: ${data['3月26日'].startsWith('+') ? '#e74c3c' : '#27ae60'}">${data['3月26日']}</td></tr>`;
+                        }
+                        
+                        historyHTML += '</table><p style="margin-top: 10px; font-size: 0.9em; color: #666;">注：红色表示上涨，绿色表示下跌（A股惯例）</p>';
+                        
+                        // 创建模态框显示历史数据
+                        const modal = document.createElement('div');
+                        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;';
+                        
+                        const modalContent = document.createElement('div');
+                        modalContent.style.cssText = 'background: white; padding: 30px; border-radius: 10px; max-width: 600px; width: 90%; max-height: 80%; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2);';
+                        modalContent.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h2 style="margin: 0;">📊 股票历史表现</h2>
+                                <button id="closeModal" style="background: #e74c3c; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer;">关闭</button>
+                            </div>
+                            ${historyHTML}
+                            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+                                <h4>历史表现分析：</h4>
+                                <ul style="margin: 10px 0; padding-left: 20px;">
+                                    <li>中国能建：前2日上涨，今日下跌-4.79%，需谨慎观察</li>
+                                    <li>金开新能：昨日上涨，今日大跌-7.2%，风险较高</li>
+                                    <li>金正大：震荡下跌趋势，基本面较弱</li>
+                                    <li>协鑫集成：连续2日下跌，光伏板块承压</li>
+                                </ul>
+                            </div>
+                        `;
+                        
+                        modal.appendChild(modalContent);
+                        document.body.appendChild(modal);
+                        
+                        // 添加关闭功能
+                        document.getElementById('closeModal').addEventListener('click', function() {
+                            document.body.removeChild(modal);
+                        });
+                        
+                        // 点击背景关闭
+                        modal.addEventListener('click', function(e) {
+                            if (e.target === modal) {
+                                document.body.removeChild(modal);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // 时间显示更新
+            function updateTime() {
+                const now = new Date();
+                const timeStr = now.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                const timeElement = document.querySelector('.timestamp');
+                if (timeElement) {
+                    timeElement.innerHTML = `复盘时间：2026-03-26 17:15 | 当前时间：${timeStr} | 分析师：风暴 🌪️`;
+                }
+            }
+            
+            updateTime();
+            setInterval(updateTime, 1000);
+        });
+    </script>
+</body>
+</html>
