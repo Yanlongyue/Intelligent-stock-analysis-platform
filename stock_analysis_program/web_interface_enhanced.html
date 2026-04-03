@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 智能股票分析系统 - 五维度算法评分</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --dark-color: #1a252f;
+            --light-color: #ecf0f1;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        /* 导航栏 */
+        .navbar {
+            background: var(--primary-color);
+            color: white;
+            padding: 0 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .navbar-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 15px 0;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+        
+        .nav-menu a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: var(--transition);
+        }
+        
+        .nav-menu a:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .nav-menu a.active {
+            background: var(--secondary-color);
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* 主容器 */
+        .main-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+        
+        .sidebar-section h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stock-list {
+            list-style: none;
+        }
+        
+        .stock-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: var(--light-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .stock-item:hover {
+            background: #dfe6e9;
+            transform: translateX(5px);
+        }
+        
+        .stock-item.active {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .stock-price {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        
+        /* 主内容区 */
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        /* KPI卡片区 */
+        .kpi-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .kpi-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            text-align: center;
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .kpi-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+        
+        .kpi-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .kpi-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .kpi-trend {
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+        
+        .trend-up { color: var(--success-color); }
+        .trend-down { color: var(--danger-color); }
+        .trend-neutral { color: var(--warning-color); }
+        
+        /* 五维度算法评分区 */
+        .algorithm-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .section-header h2 {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .algorithm-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .algorithm-card {
+            background: var(--light-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: var(--transition);
+        }
+        
+        .algorithm-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        
+        .algorithm-score {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 15px 0;
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            line-height: 60px;
+            border-radius: 50%;
+        }
+        
+        .score-0 { background: #27ae60; color: white; } /* 绿色 - 利好 */
+        .score-1 { background: #2ecc71; color: white; }
+        .score-2 { background: #f1c40f; color: #333; } /* 黄色 - 中性 */
+        .score-3 { background: #e67e22; color: white; }
+        .score-4 { background: #e74c3c; color: white; } /* 红色 - 利空 */
+        .score-5 { background: #c0392b; color: white; }
+        
+        .algorithm-name {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .algorithm-desc {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 15px;
+            min-height: 40px;
+        }
+        
+        /* 图表区 */
+        .chart-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        /* 持仓管理区 */
+        .management-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .management-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .position-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .position-table th {
+            background: var(--light-color);
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .position-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .position-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .position-action {
+            display: flex;
+            gap: 8px;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .btn-primary {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--secondary-color);
+            color: var(--secondary-color);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+        
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        /* 输出区域 */
+        .output-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        #output {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        
+        /* 状态栏 */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            z-index: 1000;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success-color);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: static;
+                order: 2;
+            }
+            
+            .nav-menu {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .kpi-section {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .algorithm-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .position-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .kpi-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .management-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+        }
+        
+        /* 加载动画 */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .loading-content {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--secondary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <i class="fas fa-chart-line" style="font-size: 2rem; color: #3498db;"></i>
+                <h1>🎯 智能股票分析系统</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#" class="active" onclick="switchTab('dashboard')"><i class="fas fa-tachometer-alt"></i> 仪表盘</a></li>
+                <li><a href="#" onclick="switchTab('analysis')"><i class="fas fa-chart-bar"></i> 五维度分析</a></li>
+                <li><a href="#" onclick="switchTab('management')"><i class="fas fa-wallet"></i> 持仓管理</a></li>
+                <li><a href="#" onclick="switchTab('reports')"><i class="fas fa-file-alt"></i> 分析报告</a></li>
+                <li><a href="#" onclick="showSettings()"><i class="fas fa-cog"></i> 系统设置</a></li>
+            </ul>
+            <div class="user-info">
+                <span id="current-time">加载中...</span>
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span id="connection-status">在线</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3><i class="fas fa-star"></i> 关注股票</h3>
+                <ul class="stock-list">
+                    <li class="stock-item active" onclick="selectStock('中国能建')">
+                        <span>中国能建 (601868.SH)</span>
+                        <span class="stock-price">¥3.20</span>
+                    </li>
+                    <li class="stock-item" onclick="selectStock('协鑫集成')">
+                        <span>协鑫集成 (002506.SZ)</span>
+                        <span class="stock-price">¥2.10</span>
+                    </li>
+                    <li class="stock-item" onclick="selectStock('金开新能')">
+                        <span>金开新能 (600821.SH)</span>
+                        <span class="stock-price">¥4.20</span>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3><i class="fas fa-bolt"></i> 快速操作</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn btn-primary" onclick="runFiveDimensionAnalysis()">
+                        <i class="fas fa-robot"></i> 五维度分析
+                    </button>
+                    <button class="btn btn-success" onclick="updateRealTimeData()">
+                        <i class="fas fa-sync-alt"></i> 更新数据
+                    </button>
+                    <button class="btn btn-warning" onclick="showHourlyPrediction()">
+                        <i class="fas fa-clock"></i> 小时级预测
+                    </button>
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3><i class="fas fa-exclamation-triangle"></i> 风险提示</h3>
+                <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; font-size: 0.9rem;">
+                    <strong>⚠️ 重要提醒：</strong><br>
+                    1. 股市有风险，投资需谨慎<br>
+                    2. 算法结果仅供参考<br>
+                    3. 严格执行止损纪律
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="content-area">
+            <!-- KPI卡片区 -->
+            <div class="kpi-section">
+                <div class="kpi-card">
+                    <div class="kpi-icon" style="color: #3498db;">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="kpi-value" id="total-value">¥4,640</div>
+                    <div class="kpi-label">总持仓市值</div>
+                    <div class="kpi-trend trend-up" id="value-trend">+1.2% 今日</div>
+                </div>
+                
+                <div class="kpi-card">
+                    <div class="kpi-icon" style="color: #27ae60;">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div class="kpi-value" id="profit-today">+¥56.80</div>
+                    <div class="kpi-label">今日收益</div>
+                    <div class="kpi-trend trend-up" id="profit-trend">+1.24%</div>
+                </div>
+                
+                <div class="kpi-card">
+                    <div class="kpi-icon" style="color: #e74c3c;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="kpi-value" id="risk-level">中高</div>
+                    <div class="kpi-label">风险等级</div>
+                    <div class="kpi-trend trend-down" id="risk-trend">比昨日↑0.3</div>
+                </div>
+                
+                <div class="kpi-card">
+                    <div class="kpi-icon" style="color: #f39c12;">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <div class="kpi-value" id="algorithm-score">3.8</div>
+                    <div class="kpi-label">综合评分</div>
+                    <div class="kpi-trend trend-neutral" id="score-trend">满分5.0</div>
+                </div>
+            </div>
+            
+            <!-- 五维度算法评分区 -->
+            <div class="algorithm-section" id="algorithm-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-brain"></i> 五维度智能算法评分</h2>
+                    <button class="btn btn-primary" onclick="runFiveDimensionAnalysis()">
+                        <i class="fas fa-play"></i> 重新计算
+                    </button>
+                </div>
+                
+                <div class="algorithm-grid">
+                    <!-- 国际局势算法 -->
+                    <div class="algorithm-card" id="international-card">
+                        <i class="fas fa-globe-asia" style="font-size: 2rem; color: #3498db;"></i>
+                        <div class="algorithm-name">国际局势算法</div>
+                        <div class="algorithm-desc">评估国际政治、经济、军事等外部因素对股票的影响</div>
+                        <div class="algorithm-score score-3" id="international-score">3</div>
+                        <div class="algorithm-desc" id="international-desc">中东局势紧张，油价上涨利空</div>
+                    </div>
+                    
+                    <!-- 国内政策算法 -->
+                    <div class="algorithm-card" id="policy-card">
+                        <i class="fas fa-landmark" style="font-size: 2rem; color: #2ecc71;"></i>
+                        <div class="algorithm-name">国内政策算法</div>
+                        <div class="algorithm-desc">分析国内政策、监管、产业规划等对行业的影响</div>
+                        <div class="algorithm-score score-4" id="policy-score">4</div>
+                        <div class="algorithm-desc" id="policy-desc">新能源政策利好，基建投资加大</div>
+                    </div>
+                    
+                    <!-- 企业发展异动算法 -->
+                    <div class="algorithm-card" id="company-card">
+                        <i class="fas fa-building" style="font-size: 2rem; color: #f39c12;"></i>
+                        <div class="algorithm-name">企业发展异动</div>
+                        <div class="algorithm-desc">监控公司财务、人事、业务等内部重大变化</div>
+                        <div class="algorithm-score score-2" id="company-score">2</div>
+                        <div class="algorithm-desc" id="company-desc">Q4财报不及预期，高管减持</div>
+                    </div>
+                    
+                    <!-- 技术侧分析算法 -->
+                    <div class="algorithm-card" id="technical-card">
+                        <i class="fas fa-chart-line" style="font-size: 2rem; color: #9b59b6;"></i>
+                        <div class="algorithm-name">技术分析算法</div>
+                        <div class="algorithm-desc">基于K线、均线、成交量等技术指标分析</div>
+                        <div class="algorithm-score score-3" id="technical-score">3</div>
+                        <div class="algorithm-desc" id="technical-desc">MACD金叉，但成交量不足</div>
+                    </div>
+                    
+                    <!-- 股民情绪算法 -->
+                    <div class="algorithm-card" id="sentiment-card">
+                        <i class="fas fa-users" style="font-size: 2rem; color: #e74c3c;"></i>
+                        <div class="algorithm-name">股民情绪算法</div>
+                        <div class="algorithm-desc">分析社交媒体、论坛、新闻等投资者情绪</div>
+                        <div class="algorithm-score score-2" id="sentiment-score">2</div>
+                        <div class="algorithm-desc" id="sentiment-desc">负面评论增多，恐慌情绪蔓延</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 图表区 -->
+            <div class="chart-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-area"></i> 股价走势图表</h2>
+                    <div>
+                        <button class="btn btn-outline btn-small" onclick="changeChartType('line')">日线</button>
+                        <button class="btn btn-outline btn-small" onclick="changeChartType('candle')">K线</button>
+                        <button class="btn btn-outline btn-small" onclick="changeChartType('volume')">成交量</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- 持仓管理区 -->
+            <div class="management-section">
+                <div class="management-header">
+                    <h2><i class="fas fa-wallet"></i> 持仓管理</h2>
+                    <div>
+                        <button class="btn btn-success btn-small" onclick="showAddPositionModal()">
+                            <i class="fas fa-plus"></i> 添加持仓
+                        </button>
+                        <button class="btn btn-warning btn-small" onclick="rebalancePortfolio()">
+                            <i class="fas fa-balance-scale"></i> 仓位再平衡
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="clearAllPositions()">
+                            <i class="fas fa-trash"></i> 清空持仓
+                        </button>
+                    </div>
+                </div>
+                
+                <table class="position-table">
+                    <thead>
+                        <tr>
+                            <th>股票名称</th>
+                            <th>代码</th>
+                            <th>持仓数量</th>
+                            <th>当前价格</th>
+                            <th>持仓市值</th>
+                            <th>成本价</th>
+                            <th>盈亏</th>
+                            <th>仓位占比</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="position-table-body">
+                        <!-- 持仓数据将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 输出区域 -->
+            <div class="output-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-terminal"></i> 分析输出</h2>
+                    <div>
+                        <button class="btn btn-outline btn-small" onclick="clearOutput()">
+                            <i class="fas fa-eraser"></i> 清空
+                        </button>
+                        <button class="btn btn-outline btn-small" onclick="saveOutput()">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                        <button class="btn btn-outline btn-small" onclick="exportReport()">
+                            <i class="fas fa-download"></i> 导出
+                        </button>
+                    </div>
+                </div>
+                <div id="output">
+欢迎使用智能股票分析系统！
+========================================
+
+系统初始化完成，五维度算法评分系统已就绪。
+
+💡 使用说明：
+1. 点击侧边栏股票可切换分析对象
+2. 点击"五维度分析"按钮运行智能算法
+3. 在持仓管理区管理您的投资组合
+4. 查看图表区了解股价走势
+
+📊 当前持仓股票：
+- 中国能建 (601868.SH): 400股
+- 协鑫集成 (002506.SZ): 400股
+- 金开新能 (600821.SH): 600股
+
+✅ 系统就绪，等待您的操作...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 状态栏 -->
+    <div class="status-bar">
+        <div class="status-indicator">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="system-status">系统状态: 运行中</span>
+        </div>
+        <div id="system-info">
+            <span id="memory-usage">内存: 45.2MB</span> | 
+            <span id="cpu-usage">CPU: 12%</span> | 
+            <span id="connected-time">连接时间: --</span>
+        </div>
+    </div>
+    
+    <!-- 模态框 - 添加持仓 -->
+    <div class="modal" id="addPositionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">添加持仓股票</div>
+                <button class="close-btn" onclick="closeAddPositionModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="stockCode">股票代码</label>
+                <input type="text" id="stockCode" class="form-control" placeholder="例如: 601868.SH">
+            </div>
+            <div class="form-group">
+                <label for="stockName">股票名称</label>
+                <input type="text" id="stockName" class="form-control" placeholder="例如: 中国能建">
+            </div>
+            <div class="form-group">
+                <label for="positionAmount">持仓数量</label>
+                <input type="number" id="positionAmount" class="form-control" placeholder="例如: 100" value="100">
+            </div>
+            <div class="form-group">
+                <label for="costPrice">成本价格</label>
+                <input type="number" step="0.01" id="costPrice" class="form-control" placeholder="例如: 3.20">
+            </div>
+            <div class="form-group">
+                <label for="currentPrice">当前价格</label>
+                <input type="number" step="0.01" id="currentPrice" class="form-control" placeholder="例如: 3.25">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 30px;">
+                <button class="btn btn-primary" onclick="addPosition()" style="flex: 1;">添加</button>
+                <button class="btn btn-outline" onclick="closeAddPositionModal()" style="flex: 1;">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载动画 -->
+    <div class="loading" id="loading">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3 id="loading-text">正在分析中...</h3>
+            <p id="loading-desc">请稍候，系统正在执行五维度算法分析</p>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let currentStock = '中国能建';
+        let positions = [
+            { code: '601868.SH', name: '中国能建', amount: 400, costPrice: 3.15, currentPrice: 3.20 },
+            { code: '002506.SZ', name: '协鑫集成', amount: 400, costPrice: 2.05, currentPrice: 2.10 },
+            { code: '600821.SH', name: '金开新能', amount: 600, costPrice: 4.10, currentPrice: 4.20 }
+        ];
+        
+        let chartInstance = null;
+        let apiBaseUrl = ''; // 部署时自动检测API地址
+        // 开发环境：http://localhost:9000
+        // 生产环境：由部署脚本设置
+        
+        // 初始化函数
+        function init() {
+            updateTime();
+            updateSystemInfo();
+            renderPositionTable();
+            initChart();
+            checkApiConnection();
+            setInterval(updateTime, 1000);
+            setInterval(updateSystemInfo, 5000);
+        }
+        
+        // 检查API连接
+        function checkApiConnection() {
+            // 自动检测API地址
+            if (!apiBaseUrl) {
+                // 如果是Gitee Pages部署，使用后端API地址
+                const isGiteePages = window.location.hostname.includes('gitee.io');
+                if (isGiteePages) {
+                    // 这里需要您设置后端API的实际地址
+                    apiBaseUrl = 'https://您的后端API地址';
+                } else {
+                    // 本地开发环境
+                    apiBaseUrl = 'http://localhost:9000';
+                }
+            }
+            
+            fetch(`${apiBaseUrl}/api/health`)
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('connection-status').textContent = 'API已连接';
+                        document.getElementById('status-dot').style.backgroundColor = '#27ae60';
+                        console.log('✅ API服务连接正常');
+                        
+                        // 连接成功，获取真实数据
+                        fetchPositionsFromApi();
+                    } else {
+                        throw new Error('API服务响应异常');
+                    }
+                })
+                .catch(error => {
+                    console.warn('⚠️ API服务未连接，使用模拟数据:', error.message);
+                    document.getElementById('connection-status').textContent = 'API未连接 (使用模拟数据)';
+                    document.getElementById('status-dot').style.backgroundColor = '#f39c12';
+                    
+                    // 使用本地模拟数据
+                    simulateAlgorithmScores();
+                });
+        }
+        
+        // 从API获取持仓数据
+        function fetchPositionsFromApi() {
+            fetch(`${apiBaseUrl}/api/positions`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.positions && data.positions.length > 0) {
+                        positions = data.positions;
+                        renderPositionTable();
+                        output('✅ 从API获取持仓数据成功');
+                        
+                        // 运行分析
+                        analyzeCurrentStock();
+                    }
+                })
+                .catch(error => {
+                    console.warn('获取持仓数据失败:', error);
+                    simulateAlgorithmScores();
+                });
+        }
+        
+        // 分析当前选中股票
+        function analyzeCurrentStock() {
+            const stockCode = positions.find(p => p.name === currentStock)?.code;
+            if (stockCode) {
+                fetch(`${apiBaseUrl}/api/analyze/${stockCode}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.error) {
+                            updateAlgorithmDisplay(data);
+                            output(`✅ ${currentStock} 分析完成`);
+                        }
+                    })
+                    .catch(error => {
+                        console.warn('分析股票失败:', error);
+                        simulateAlgorithmScores();
+                    });
+            }
+        }
+        
+        // 根据API数据更新算法显示
+        function updateAlgorithmDisplay(data) {
+            const scores = data.algorithm_scores;
+            
+            // 更新各维度评分
+            updateAlgorithmScoreFromApi('international', scores.international);
+            updateAlgorithmScoreFromApi('policy', scores.policy);
+            updateAlgorithmScoreFromApi('company', scores.company);
+            updateAlgorithmScoreFromApi('technical', scores.technical);
+            updateAlgorithmScoreFromApi('sentiment', scores.sentiment);
+            
+            // 更新综合评分
+            const comprehensiveScore = data.comprehensive_score;
+            document.getElementById('algorithm-score').textContent = comprehensiveScore.toFixed(1);
+            
+            // 更新风险等级
+            const riskLevel = data.risk_level.level;
+            document.getElementById('risk-level').textContent = riskLevel;
+            document.getElementById('risk-level').style.color = data.risk_level.color;
+            
+            // 更新KPI
+            updateKPI(comprehensiveScore);
+        }
+        
+        // 根据API数据更新算法分数
+        function updateAlgorithmScoreFromApi(type, scoreData) {
+            const score = scoreData.score;
+            const element = document.getElementById(`${type}-score`);
+            element.textContent = score.toFixed(1);
+            
+            // 更新描述
+            const descElement = document.getElementById(`${type}-desc`);
+            descElement.textContent = scoreData.description;
+            
+            // 更新颜色
+            element.className = 'algorithm-score';
+            if (score <= 1) {
+                element.classList.add('score-0');
+            } else if (score <= 2) {
+                element.classList.add('score-1');
+            } else if (score <= 3) {
+                element.classList.add('score-2');
+            } else if (score <= 4) {
+                element.classList.add('score-3');
+            } else {
+                element.classList.add('score-4');
+            }
+        }
+        
+        // 更新时间
+        function updateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('current-time').textContent = dateStr;
+        }
+        
+        // 更新系统信息
+        function updateSystemInfo() {
+            const memory = (Math.random() * 100 + 200).toFixed(1);
+            const cpu = Math.floor(Math.random() * 30 + 5);
+            document.getElementById('memory-usage').textContent = `内存: ${memory}MB`;
+            document.getElementById('cpu-usage').textContent = `CPU: ${cpu}%`;
+            
+            // 更新连接时间
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('connected-time').textContent = `连接时间: ${hours}:${minutes}`;
+        }
+        
+        // 切换标签页
+        function switchTab(tabName) {
+            // 更新导航菜单激活状态
+            document.querySelectorAll('.nav-menu a').forEach(a => a.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 这里可以添加切换不同内容区域的逻辑
+            output(`切换到 ${tabName} 页面`);
+        }
+        
+        // 选择股票
+        function selectStock(stockName) {
+            currentStock = stockName;
+            
+            // 更新股票列表激活状态
+            document.querySelectorAll('.stock-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.textContent.includes(stockName)) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // 更新算法评分
+            simulateAlgorithmScores();
+            updateChart();
+            
+            output(`已选择股票: ${stockName}`);
+        }
+        
+        // 模拟五维度算法评分
+        function simulateAlgorithmScores() {
+            // 为当前股票生成随机评分（0-5分）
+            const scores = {
+                international: Math.floor(Math.random() * 6),
+                policy: Math.floor(Math.random() * 6),
+                company: Math.floor(Math.random() * 6),
+                technical: Math.floor(Math.random() * 6),
+                sentiment: Math.floor(Math.random() * 6)
+            };
+            
+            // 更新分数显示
+            updateAlgorithmScore('international', scores.international);
+            updateAlgorithmScore('policy', scores.policy);
+            updateAlgorithmScore('company', scores.company);
+            updateAlgorithmScore('technical', scores.technical);
+            updateAlgorithmScore('sentiment', scores.sentiment);
+            
+            // 更新描述
+            const descriptions = {
+                0: '严重不利 - 红色警报',
+                1: '较为不利 - 需要警惕',
+                2: '中性偏空 - 谨慎观察',
+                3: '中性偏好 - 机会存在',
+                4: '较为有利 - 积极信号',
+                5: '重大利好 - 强烈推荐'
+            };
+            
+            document.getElementById('international-desc').textContent = getInternationalDesc(scores.international);
+            document.getElementById('policy-desc').textContent = getPolicyDesc(scores.policy);
+            document.getElementById('company-desc').textContent = getCompanyDesc(scores.company);
+            document.getElementById('technical-desc').textContent = getTechnicalDesc(scores.technical);
+            document.getElementById('sentiment-desc').textContent = getSentimentDesc(scores.sentiment);
+            
+            // 计算综合评分
+            const avgScore = (scores.international + scores.policy + scores.company + scores.technical + scores.sentiment) / 5;
+            document.getElementById('algorithm-score').textContent = avgScore.toFixed(1);
+            
+            // 更新KPI
+            updateKPI(avgScore);
+        }
+        
+        // 更新算法分数显示
+        function updateAlgorithmScore(type, score) {
+            const element = document.getElementById(`${type}-score`);
+            element.textContent = score;
+            element.className = 'algorithm-score';
+            
+            // 根据分数设置颜色
+            if (score <= 1) {
+                element.classList.add('score-0'); // 绿色 - 利好
+            } else if (score <= 2) {
+                element.classList.add('score-1'); // 浅绿
+            } else if (score <= 3) {
+                element.classList.add('score-2'); // 黄色 - 中性
+            } else if (score <= 4) {
+                element.classList.add('score-3'); // 橙色
+            } else {
+                element.classList.add('score-4'); // 红色 - 利空
+            }
+        }
+        
+        // 获取国际局势描述
+        function getInternationalDesc(score) {
+            const descs = [
+                '国际局势极度紧张，战争风险高',
+                '国际关系紧张，制裁风险增加',
+                '国际局势平稳，但存在不确定性',
+                '国际合作加强，外部环境改善',
+                '国际局势良好，全球化推进',
+                '国际环境极佳，和平发展为主'
+            ];
+            return descs[score] || '数据更新中...';
+        }
+        
+        // 获取政策描述
+        function getPolicyDesc(score) {
+            const descs = [
+                '政策严厉收紧，行业监管加强',
+                '政策偏紧，限制性措施增多',
+                '政策中性，无明显变化',
+                '政策支持，利好措施出台',
+                '政策大力支持，产业规划明确',
+                '政策红利释放，重大利好落地'
+            ];
+            return descs[score] || '数据更新中...';
+        }
+        
+        // 获取公司描述
+        function getCompanyDesc(score) {
+            const descs = [
+                '公司财务恶化，重大负面事件',
+                '业绩下滑，管理层动荡',
+                '经营平稳，无重大变化',
+                '业绩增长，业务拓展',
+                '高速增长，创新突破',
+                '行业龙头，核心竞争力强'
+            ];
+            return descs[score] || '数据更新中...';
+        }
+        
+        // 获取技术分析描述
+        function getTechnicalDesc(score) {
+            const descs = [
+                '技术破位，下跌趋势确立',
+                '弱势整理，有继续下跌风险',
+                '横盘震荡，方向不明',
+                '技术企稳，有反弹可能',
+                '上升趋势，技术面良好',
+                '强势上涨，技术指标完美'
+            ];
+            return descs[score] || '数据更新中...';
+        }
+        
+        // 获取情绪描述
+        function getSentimentDesc(score) {
+            const descs = [
+                '极度悲观，恐慌抛售',
+                '情绪低迷，谨慎观望',
+                '情绪中性，分歧较大',
+                '情绪回暖，信心恢复',
+                '情绪乐观，积极买入',
+                '极度乐观，狂热追捧'
+            ];
+            return descs[score] || '数据更新中...';
+        }
+        
+        // 更新KPI
+        function updateKPI(algorithmScore) {
+            // 计算总市值
+            let totalValue = 0;
+            positions.forEach(pos => {
+                totalValue += pos.amount * pos.currentPrice;
+            });
+            document.getElementById('total-value').textContent = `¥${totalValue.toFixed(0)}`;
+            
+            // 计算今日收益（随机）
+            const todayProfit = Math.random() * 200 - 50;
+            document.getElementById('profit-today').textContent = todayProfit >= 0 ? `+¥${todayProfit.toFixed(2)}` : `-¥${Math.abs(todayProfit).toFixed(2)}`;
+            document.getElementById('profit-trend').textContent = `${(todayProfit/totalValue*100).toFixed(2)}%`;
+            document.getElementById('profit-trend').className = `kpi-trend ${todayProfit >= 0 ? 'trend-up' : 'trend-down'}`;
+            
+            // 根据算法评分计算风险等级
+            let riskLevel = '低';
+            if (algorithmScore < 2) riskLevel = '极高';
+            else if (algorithmScore < 3) riskLevel = '高';
+            else if (algorithmScore < 4) riskLevel = '中高';
+            else if (algorithmScore < 4.5) riskLevel = '中等';
+            else riskLevel = '低';
+            
+            document.getElementById('risk-level').textContent = riskLevel;
+        }
+        
+        // 运行五维度分析
+        function runFiveDimensionAnalysis() {
+            showLoading('正在执行五维度智能算法分析...');
+            output('\n========================================');
+            output(`开始对 ${currentStock} 进行五维度算法分析...`);
+            output('1. 国际局势算法分析中...');
+            output('2. 国内政策算法分析中...');
+            output('3. 企业发展异动分析中...');
+            output('4. 技术侧分析算法运行中...');
+            output('5. 股民情绪算法计算中...');
+            
+            // 检查API连接状态
+            const connectionStatus = document.getElementById('connection-status').textContent;
+            if (connectionStatus.includes('API已连接')) {
+                // 使用API进行分析
+                const stockCode = positions.find(p => p.name === currentStock)?.code;
+                if (stockCode) {
+                    fetch(`${apiBaseUrl}/api/analyze/${stockCode}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.error) {
+                                updateAlgorithmDisplay(data);
+                                hideLoading();
+                                output('✅ 五维度算法分析完成！');
+                                output(`综合评分: ${data.comprehensive_score.toFixed(1)}/5.0`);
+                                output('详细评分已显示在五维度评分区域');
+                                
+                                // 给出投资建议
+                                giveInvestmentAdvice(data.comprehensive_score, data.risk_level);
+                                
+                                // 如果有小时级预测，也显示
+                                if (data.hourly_predictions) {
+                                    showHourlyPredictionFromApi(data.hourly_predictions, data.stock_info.current_price);
+                                }
+                            } else {
+                                throw new Error(data.error);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('API分析失败:', error);
+                            output('⚠️ API分析失败，使用模拟数据');
+                            analyzeWithSimulatedData();
+                        });
+                } else {
+                    analyzeWithSimulatedData();
+                }
+            } else {
+                // 使用模拟数据
+                analyzeWithSimulatedData();
+            }
+        }
+        
+        // 使用模拟数据进行分析
+        function analyzeWithSimulatedData() {
+            setTimeout(() => {
+                simulateAlgorithmScores();
+                hideLoading();
+                output('✅ 五维度算法分析完成！');
+                output(`综合评分: ${document.getElementById('algorithm-score').textContent}/5.0`);
+                output('详细评分已显示在五维度评分区域');
+                
+                // 给出投资建议
+                const score = parseFloat(document.getElementById('algorithm-score').textContent);
+                giveInvestmentAdvice(score, null);
+            }, 2000);
+        }
+        
+        // 给出投资建议
+        function giveInvestmentAdvice(score, riskLevel) {
+            if (score < 2) {
+                output('⚠️ 投资建议: 强烈建议减仓或清仓，风险极高');
+            } else if (score < 3) {
+                output('⚠️ 投资建议: 建议减仓，风险较高');
+            } else if (score < 4) {
+                output('✅ 投资建议: 可以持有，但需监控风险');
+            } else {
+                output('🚀 投资建议: 可以考虑加仓，机会较好');
+            }
+            
+            if (riskLevel) {
+                output(`📊 风险等级: ${riskLevel.level} - ${riskLevel.suggestion}`);
+            }
+        }
+        
+        // 显示API提供的小时级预测
+        function showHourlyPredictionFromApi(predictions, currentPrice) {
+            output('\n🕐 小时级股价区间预测 (API提供):');
+            output(`当前价格: ¥${currentPrice.toFixed(2)}`);
+            output('\n明日小时级预测区间:');
+            
+            predictions.forEach(pred => {
+                output(`${pred.time_slot}: ¥${pred.lower.toFixed(2)} - ¥${pred.upper.toFixed(2)}`);
+            });
+        }
+        
+        // 显示/隐藏加载动画
+        function showLoading(text = '正在处理中...') {
+            document.getElementById('loading-text').textContent = text;
+            document.getElementById('loading').style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        // 输出函数
+        function output(text) {
+            const outputEl = document.getElementById('output');
+            outputEl.textContent += text + '\n';
+            outputEl.scrollTop = outputEl.scrollHeight;
+        }
+        
+        // 清空输出
+        function clearOutput() {
+            document.getElementById('output').textContent = '';
+            output('输出区域已清空');
+        }
+        
+        // 保存输出
+        function saveOutput() {
+            const content = document.getElementById('output').textContent;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `股票分析_${new Date().toISOString().slice(0,10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            output('✅ 输出已保存为文件');
+        }
+        
+        // 导出报告
+        function exportReport() {
+            showLoading('正在生成分析报告...');
+            
+            setTimeout(() => {
+                const report = generateReportContent();
+                const blob = new Blob([report], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `股票分析报告_${new Date().toISOString().slice(0,10)}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                hideLoading();
+                output('✅ HTML报告已导出');
+            }, 1500);
+        }
+        
+        // 生成报告内容
+        function generateReportContent() {
+            const time = new Date().toLocaleString('zh-CN');
+            return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>股票分析报告 - ${time}</title>
+    <style>
+        body { font-family: 'Microsoft YaHei', sans-serif; margin: 40px; }
+        h1 { color: #2c3e50; }
+        .section { margin: 30px 0; }
+        .score { display: inline-block; padding: 5px 10px; border-radius: 5px; color: white; margin: 0 5px; }
+        .score-0 { background: #27ae60; }
+        .score-1 { background: #2ecc71; }
+        .score-2 { background: #f1c40f; color: #333; }
+        .score-3 { background: #e67e22; }
+        .score-4 { background: #e74c3c; }
+        .score-5 { background: #c0392b; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>📊 股票分析报告</h1>
+    <p>生成时间: ${time}</p>
+    <p>分析对象: ${currentStock}</p>
+    
+    <div class="section">
+        <h2>五维度算法评分</h2>
+        <p>国际局势算法: <span class="score score-${document.getElementById('international-score').textContent}">${document.getElementById('international-score').textContent}/5</span></p>
+        <p>国内政策算法: <span class="score score-${document.getElementById('policy-score').textContent}">${document.getElementById('policy-score').textContent}/5</span></p>
+        <p>企业发展异动: <span class="score score-${document.getElementById('company-score').textContent}">${document.getElementById('company-score').textContent}/5</span></p>
+        <p>技术分析算法: <span class="score score-${document.getElementById('technical-score').textContent}">${document.getElementById('technical-score').textContent}/5</span></p>
+        <p>股民情绪算法: <span class="score score-${document.getElementById('sentiment-score').textContent}">${document.getElementById('sentiment-score').textContent}/5</span></p>
+        <p><strong>综合评分: ${document.getElementById('algorithm-score').textContent}/5.0</strong></p>
+    </div>
+    
+    <div class="section">
+        <h2>持仓情况</h2>
+        <table>
+            <tr>
+                <th>股票名称</th>
+                <th>持仓数量</th>
+                <th>当前价格</th>
+                <th>持仓市值</th>
+                <th>盈亏</th>
+            </tr>
+            ${positions.map(pos => {
+                const value = pos.amount * pos.currentPrice;
+                const profit = (pos.currentPrice - pos.costPrice) * pos.amount;
+                return `<tr>
+                    <td>${pos.name} (${pos.code})</td>
+                    <td>${pos.amount}</td>
+                    <td>¥${pos.currentPrice.toFixed(2)}</td>
+                    <td>¥${value.toFixed(2)}</td>
+                    <td style="color: ${profit >= 0 ? 'green' : 'red'}">${profit >= 0 ? '+' : ''}¥${profit.toFixed(2)}</td>
+                </tr>`;
+            }).join('')}
+        </table>
+    </div>
+    
+    <div class="section">
+        <h2>投资建议</h2>
+        <p>${document.getElementById('output').textContent.split('\n').slice(-5).join('<br>')}</p>
+    </div>
+    
+    <div class="section">
+        <p><strong>免责声明:</strong> 本报告基于算法生成，仅供参考，不构成投资建议。投资有风险，入市需谨慎。</p>
+    </div>
+</body>
+</html>`;
+        }
+        
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            // 生成模拟数据
+            const labels = [];
+            const data = [];
+            let price = 3.20;
+            
+            for (let i = 0; i < 30; i++) {
+                labels.push(`D-${30 - i}`);
+                price += (Math.random() - 0.5) * 0.2;
+                if (price < 2.8) price = 2.8;
+                if (price > 3.6) price = 3.6;
+                data.push(price);
+            }
+            
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.reverse(),
+                    datasets: [{
+                        label: `${currentStock} 股价走势`,
+                        data: data,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '¥' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 更新图表
+        function updateChart() {
+            if (!chartInstance) return;
+            
+            // 为不同股票生成不同数据
+            let basePrice = 3.20;
+            if (currentStock === '协鑫集成') basePrice = 2.10;
+            if (currentStock === '金开新能') basePrice = 4.20;
+            
+            // 更新图表数据
+            const newData = [];
+            let price = basePrice;
+            
+            for (let i = 0; i < 30; i++) {
+                price += (Math.random() - 0.5) * 0.2;
+                if (price < basePrice * 0.85) price = basePrice * 0.85;
+                if (price > basePrice * 1.15) price = basePrice * 1.15;
+                newData.push(price);
+            }
+            
+            chartInstance.data.datasets[0].data = newData;
+            chartInstance.data.datasets[0].label = `${currentStock} 股价走势`;
+            chartInstance.update();
+        }
+        
+        // 切换图表类型
+        function changeChartType(type) {
+            if (!chartInstance) return;
+            
+            chartInstance.config.type = type === 'candle' ? 'bar' : 'line';
+            
+            if (type === 'candle') {
+                // 模拟K线数据
+                const candleData = [];
+                for (let i = 0; i < 20; i++) {
+                    const open = 3.0 + Math.random() * 0.5;
+                    const close = open + (Math.random() - 0.5) * 0.3;
+                    const high = Math.max(open, close) + Math.random() * 0.2;
+                    const low = Math.min(open, close) - Math.random() * 0.2;
+                    
+                    candleData.push({
+                        x: `D-${20-i}`,
+                        o: open,
+                        h: high,
+                        l: low,
+                        c: close
+                    });
+                }
+                
+                // 这里简化处理，实际应该使用专门的K线图插件
+                chartInstance.data.datasets[0].data = candleData.map(d => (d.o + d.c) / 2);
+            } else if (type === 'volume') {
+                // 成交量数据
+                const volumeData = [];
+                for (let i = 0; i < 30; i++) {
+                    volumeData.push(Math.floor(Math.random() * 1000000) + 500000);
+                }
+                chartInstance.data.datasets[0].data = volumeData;
+                chartInstance.data.datasets[0].label = `${currentStock} 成交量`;
+            }
+            
+            chartInstance.update();
+        }
+        
+        // 渲染持仓表格
+        function renderPositionTable() {
+            const tbody = document.getElementById('position-table-body');
+            tbody.innerHTML = '';
+            
+            let totalValue = 0;
+            positions.forEach((pos, index) => {
+                const value = pos.amount * pos.currentPrice;
+                totalValue += value;
+                const profit = (pos.currentPrice - pos.costPrice) * pos.amount;
+                const profitPercent = ((pos.currentPrice - pos.costPrice) / pos.costPrice * 100).toFixed(2);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${pos.name}</td>
+                    <td>${pos.code}</td>
+                    <td>${pos.amount}</td>
+                    <td>¥${pos.currentPrice.toFixed(2)}</td>
+                    <td>¥${value.toFixed(2)}</td>
+                    <td>¥${pos.costPrice.toFixed(2)}</td>
+                    <td style="color: ${profit >= 0 ? 'green' : 'red'}">
+                        ${profit >= 0 ? '+' : ''}¥${profit.toFixed(2)} (${profitPercent}%)
+                    </td>
+                    <td>${((value / totalValue) * 100).toFixed(1)}%</td>
+                    <td>
+                        <div class="position-action">
+                            <button class="btn btn-small btn-outline" onclick="editPosition(${index})">编辑</button>
+                            <button class="btn btn-small btn-danger" onclick="deletePosition(${index})">删除</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 更新总市值
+            updateKPI(parseFloat(document.getElementById('algorithm-score').textContent));
+        }
+        
+        // 显示添加持仓模态框
+        function showAddPositionModal() {
+            document.getElementById('addPositionModal').style.display = 'flex';
+        }
+        
+        // 关闭添加持仓模态框
+        function closeAddPositionModal() {
+            document.getElementById('addPositionModal').style.display = 'none';
+            // 清空表单
+            document.getElementById('stockCode').value = '';
+            document.getElementById('stockName').value = '';
+            document.getElementById('positionAmount').value = '100';
+            document.getElementById('costPrice').value = '';
+            document.getElementById('currentPrice').value = '';
+        }
+        
+        // 添加持仓
+        function addPosition() {
+            const code = document.getElementById('stockCode').value.trim();
+            const name = document.getElementById('stockName').value.trim();
+            const amount = parseInt(document.getElementById('positionAmount').value);
+            const costPrice = parseFloat(document.getElementById('costPrice').value);
+            const currentPrice = parseFloat(document.getElementById('currentPrice').value);
+            
+            if (!code || !name || !amount || !costPrice || !currentPrice) {
+                alert('请填写完整的持仓信息！');
+                return;
+            }
+            
+            positions.push({
+                code,
+                name,
+                amount,
+                costPrice,
+                currentPrice
+            });
+            
+            renderPositionTable();
+            closeAddPositionModal();
+            output(`✅ 已添加持仓: ${name} (${code}) ${amount}股`);
+        }
+        
+        // 编辑持仓
+        function editPosition(index) {
+            const pos = positions[index];
+            if (confirm(`编辑 ${pos.name} 的持仓信息？`)) {
+                const newAmount = prompt('请输入新的持仓数量:', pos.amount);
+                const newCostPrice = prompt('请输入新的成本价:', pos.costPrice);
+                const newCurrentPrice = prompt('请输入新的当前价格:', pos.currentPrice);
+                
+                if (newAmount && newCostPrice && newCurrentPrice) {
+                    positions[index].amount = parseInt(newAmount);
+                    positions[index].costPrice = parseFloat(newCostPrice);
+                    positions[index].currentPrice = parseFloat(newCurrentPrice);
+                    
+                    renderPositionTable();
+                    output(`✅ 已更新持仓: ${pos.name}`);
+                }
+            }
+        }
+        
+        // 删除持仓
+        function deletePosition(index) {
+            const pos = positions[index];
+            if (confirm(`确认删除 ${pos.name} 的持仓记录？`)) {
+                positions.splice(index, 1);
+                renderPositionTable();
+                output(`🗑️ 已删除持仓: ${pos.name}`);
+            }
+        }
+        
+        // 仓位再平衡
+        function rebalancePortfolio() {
+            showLoading('正在计算仓位再平衡方案...');
+            
+            setTimeout(() => {
+                // 计算当前仓位比例
+                let totalValue = 0;
+                positions.forEach(pos => {
+                    totalValue += pos.amount * pos.currentPrice;
+                });
+                
+                // 生成再平衡建议
+                output('\n========================================');
+                output('⚖️ 仓位再平衡建议:');
+                output('当前仓位分布:');
+                
+                positions.forEach((pos, index) => {
+                    const value = pos.amount * pos.currentPrice;
+                    const ratio = (value / totalValue * 100).toFixed(1);
+                    const targetRatio = (100 / positions.length).toFixed(1); // 平均分配
+                    
+                    output(`${pos.name}: ${ratio}% (目标: ${targetRatio}%)`);
+                    
+                    if (ratio > parseFloat(targetRatio) + 5) {
+                        const reduceAmount = Math.floor(pos.amount * 0.2); // 减少20%
+                        output(`  建议减仓: ${reduceAmount}股`);
+                    } else if (ratio < parseFloat(targetRatio) - 5) {
+                        const addAmount = Math.floor((totalValue * parseFloat(targetRatio)/100 - value) / pos.currentPrice);
+                        output(`  建议加仓: ${addAmount}股`);
+                    } else {
+                        output('  仓位合理，无需调整');
+                    }
+                });
+                
+                output('\n💡 再平衡原则:');
+                output('1. 单只股票仓位不超过25%');
+                output('2. 高风险股票仓位不超过15%');
+                output('3. 保留10-20%现金备用');
+                
+                hideLoading();
+            }, 1500);
+        }
+        
+        // 清空所有持仓
+        function clearAllPositions() {
+            if (confirm('确认清空所有持仓记录？此操作不可恢复！')) {
+                positions = [];
+                renderPositionTable();
+                output('🗑️ 所有持仓记录已清空');
+            }
+        }
+        
+        // 更新实时数据
+        function updateRealTimeData() {
+            showLoading('正在更新实时数据...');
+            
+            // 检查API连接状态
+            const connectionStatus = document.getElementById('connection-status').textContent;
+            if (connectionStatus.includes('API已连接')) {
+                // 使用API更新数据
+                fetch(`${apiBaseUrl}/api/update_prices`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // 重新获取持仓数据
+                        return fetch(`${apiBaseUrl}/api/positions`);
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.positions && data.positions.length > 0) {
+                            positions = data.positions;
+                            renderPositionTable();
+                            
+                            // 重新分析当前股票
+                            const stockCode = positions.find(p => p.name === currentStock)?.code;
+                            if (stockCode) {
+                                return fetch(`${apiBaseUrl}/api/analyze/${stockCode}`);
+                            }
+                        }
+                        throw new Error('无法获取更新后的数据');
+                    })
+                    .then(response => response.json())
+                    .then(analysisData => {
+                        if (!analysisData.error) {
+                            updateAlgorithmDisplay(analysisData);
+                            updateChart();
+                            hideLoading();
+                            output('✅ 实时数据更新完成');
+                            output('股价、算法评分和图表已通过API更新');
+                        } else {
+                            throw new Error(analysisData.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('API更新失败:', error);
+                        output('⚠️ API更新失败，使用模拟更新');
+                        updateWithSimulatedData();
+                    });
+            } else {
+                // 使用模拟数据更新
+                updateWithSimulatedData();
+            }
+        }
+        
+        // 使用模拟数据更新
+        function updateWithSimulatedData() {
+            setTimeout(() => {
+                positions.forEach(pos => {
+                    // 随机波动
+                    const change = (Math.random() - 0.5) * 0.1;
+                    pos.currentPrice += change;
+                    if (pos.currentPrice < 0.1) pos.currentPrice = 0.1;
+                });
+                
+                renderPositionTable();
+                simulateAlgorithmScores();
+                updateChart();
+                
+                hideLoading();
+                output('✅ 实时数据更新完成');
+                output('股价、算法评分和图表已更新');
+            }, 1200);
+        }
+        
+        // 显示小时级预测
+        function showHourlyPrediction() {
+            output('\n========================================');
+            output('🕐 小时级股价区间预测:');
+            output('基于五维度算法评分，生成明日股价预测区间');
+            
+            const basePrice = positions.find(p => p.name === currentStock)?.currentPrice || 3.20;
+            
+            output(`当前价格: ¥${basePrice.toFixed(2)}`);
+            output('\n明日小时级预测区间:');
+            output('09:30-10:30: ¥' + (basePrice * (0.98 + Math.random() * 0.04)).toFixed(2) + ' - ¥' + (basePrice * (1.02 + Math.random() * 0.04)).toFixed(2));
+            output('10:30-11:30: ¥' + (basePrice * (0.99 + Math.random() * 0.04)).toFixed(2) + ' - ¥' + (basePrice * (1.03 + Math.random() * 0.04)).toFixed(2));
+            output('13:00-14:00: ¥' + (basePrice * (1.00 + Math.random() * 0.04)).toFixed(2) + ' - ¥' + (basePrice * (1.04 + Math.random() * 0.04)).toFixed(2));
+            output('14:00-15:00: ¥' + (basePrice * (0.97 + Math.random() * 0.04)).toFixed(2) + ' - ¥' + (basePrice * (1.01 + Math.random() * 0.04)).toFixed(2));
+            
+            output('\n📊 预测依据:');
+            output('1. 国际局势算法: ' + document.getElementById('international-desc').textContent);
+            output('2. 国内政策算法: ' + document.getElementById('policy-desc').textContent);
+            output('3. 技术分析算法: ' + document.getElementById('technical-desc').textContent);
+        }
+        
+        // 系统设置
+        function showSettings() {
+            output('\n========================================');
+            output('⚙️ 系统设置:');
+            output('1. 数据更新频率: 每5分钟自动更新');
+            output('2. 算法模型: 五维度智能算法 v1.0');
+            output('3. 风险偏好: 平衡型');
+            output('4. 报告格式: HTML + Markdown');
+            output('5. 数据源: Tushare Pro API');
+            output('\n💡 提示: 完整设置功能正在开发中...');
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

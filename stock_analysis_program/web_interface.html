@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>七步法股票分析系统 🚀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 40px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .kpi-item {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        
+        .kpi-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .kpi-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #0ba360 0%, #3cba92 100%);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .output-area {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        #output {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn-clear {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .action-btn-save {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .action-btn-help {
+            background: #3498db;
+            color: white;
+        }
+        
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p id="loading-text">正在运行分析...</p>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎯 七步法股票分析系统</h1>
+            <p>可视化操作界面 · 基于HTML5技术</p>
+            <p id="current-time">当前时间: 加载中...</p>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h2>📊 系统概览</h2>
+                <div class="kpi-grid">
+                    <div class="kpi-item">
+                        <div class="kpi-value" id="stock-count">3</div>
+                        <div class="kpi-label">持仓股票数</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="kpi-value" id="total-value">¥4,640</div>
+                        <div class="kpi-label">总持仓市值</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="kpi-value" id="risk-level">中高</div>
+                        <div class="kpi-label">风险等级</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="kpi-value" id="report-count">2</div>
+                        <div class="kpi-label">今日报告</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🚀 快速操作</h2>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="runFullAnalysis()">
+                        <span>🚀</span> 一键完整分析
+                    </button>
+                    <button class="btn btn-success" onclick="runQuickAnalysis()">
+                        <span>📊</span> 快速持仓分析
+                    </button>
+                    <button class="btn btn-warning" onclick="generateReport()">
+                        <span>📄</span> 生成今日报告
+                    </button>
+                    <button class="btn btn-secondary" onclick="showPositions()">
+                        <span>📈</span> 查看持仓管理
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📋 当前持仓</h2>
+                <div id="positions-list">
+                    <p>中国能建 (601868.SH): 400股 - ¥3.20</p>
+                    <p>协鑫集成 (002506.SZ): 400股 - ¥2.10</p>
+                    <p>金开新能 (600821.SH): 600股 - ¥4.20</p>
+                </div>
+                <div class="action-buttons" style="margin-top: 20px;">
+                    <button class="action-btn action-btn-help" onclick="managePositions()">
+                        管理持仓
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="output-area">
+            <div class="output-header">
+                <h2>📊 输出结果</h2>
+                <div class="action-buttons">
+                    <button class="action-btn action-btn-clear" onclick="clearOutput()">
+                        清空
+                    </button>
+                    <button class="action-btn action-btn-save" onclick="saveOutput()">
+                        保存
+                    </button>
+                    <button class="action-btn action-btn-help" onclick="showHelp()">
+                        帮助
+                    </button>
+                </div>
+            </div>
+            <div id="output">
+欢迎使用七步法股票分析系统！
+========================================
+
+💡 使用说明：
+1. 点击上方按钮运行相应功能
+2. 运行结果会显示在此区域
+3. 支持复制和保存输出内容
+
+📋 当前持仓：
+- 中国能建 (601868.SH): 400股
+- 协鑫集成 (002506.SZ): 400股
+- 金开新能 (600821.SH): 600股
+
+✅ 系统就绪，等待您的操作...
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div id="status">状态: 就绪</div>
+        <div id="sys-info">Python 3.x | 内存: -- | 时间: --</div>
+    </div>
+
+    <script>
+        // 更新时间显示
+        function updateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('current-time').textContent = `当前时间: ${dateStr}`;
+            document.getElementById('sys-info').textContent = `时间: ${dateStr}`;
+        }
+        
+        // 初始更新时间
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // 输出函数
+        function output(text) {
+            const outputEl = document.getElementById('output');
+            outputEl.textContent += text + '\n';
+            outputEl.scrollTop = outputEl.scrollHeight;
+        }
+        
+        // 清空输出
+        function clearOutput() {
+            document.getElementById('output').textContent = '';
+            updateStatus('输出已清空');
+            output('输出区域已清空');
+        }
+        
+        // 更新状态
+        function updateStatus(text) {
+            document.getElementById('status').textContent = `状态: ${text}`;
+        }
+        
+        // 显示加载动画
+        function showLoading(text = '正在运行分析...') {
+            document.getElementById('loading-text').textContent = text;
+            document.getElementById('loading').style.display = 'block';
+        }
+        
+        // 隐藏加载动画
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        // 运行完整分析
+        function runFullAnalysis() {
+            showLoading('正在运行完整分析...');
+            updateStatus('运行完整分析中');
+            output('\n========================================');
+            output('🚀 开始运行完整分析...');
+            output('📡 正在获取数据...');
+            
+            // 模拟分析过程
+            setTimeout(() => {
+                output('✅ 数据获取完成');
+                output('📊 正在分析持仓...');
+                
+                setTimeout(() => {
+                    output('📈 正在生成预测...');
+                    
+                    setTimeout(() => {
+                        output('📄 正在创建报告...');
+                        
+                        setTimeout(() => {
+                            hideLoading();
+                            output('🎉 完整分析完成！');
+                            output('📂 报告已保存到: reports/ 目录');
+                            output('   - 深度复盘与明日投资计划_20260402.html');
+                            output('   - 深度复盘与明日投资计划_20260402.md');
+                            output('\n💡 投资建议：');
+                            output('   1. 中国能建: 持有，目标价位¥3.50-3.80');
+                            output('   2. 协鑫集成: 谨慎持有，目标价位¥2.20-2.50');
+                            output('   3. 金开新能: 风险监控，建议分批减仓');
+                            updateStatus('分析完成');
+                            
+                            // 更新报告数量
+                            document.getElementById('report-count').textContent = '3';
+                        }, 1000);
+                    }, 1000);
+                }, 1000);
+            }, 1000);
+        }
+        
+        // 运行快速分析
+        function runQuickAnalysis() {
+            showLoading('正在运行快速分析...');
+            updateStatus('运行快速分析中');
+            output('\n========================================');
+            output('📊 开始运行快速持仓分析...');
+            
+            setTimeout(() => {
+                output('\n📈 您当前持仓 3 只股票：');
+                output('----------------------------------------');
+                output('股票名称: 中国能建 (601868.SH)');
+                output('持仓数量: 400 股');
+                output('当前价格: ¥3.20');
+                output('持仓市值: ¥1280.00');
+                output('股票类型: 价值股');
+                output('风险等级: 中等');
+                output('----------------------------------------');
+                output('股票名称: 协鑫集成 (002506.SZ)');
+                output('持仓数量: 400 股');
+                output('当前价格: ¥2.10');
+                output('持仓市值: ¥840.00');
+                output('股票类型: 成长股');
+                output('风险等级: 高风险');
+                output('----------------------------------------');
+                output('股票名称: 金开新能 (600821.SH)');
+                output('持仓数量: 600 股');
+                output('当前价格: ¥4.20');
+                output('持仓市值: ¥2520.00');
+                output('股票类型: 概念股');
+                output('风险等级: 高风险');
+                output('----------------------------------------');
+                output('\n💰 总持仓分析:');
+                output('总持仓市值: ¥4640.00');
+                output('中国能建: 27.6%');
+                output('协鑫集成: 18.1%');
+                output('金开新能: 54.3%');
+                output('\n⚠️ 风险提示:');
+                output('1. 金开新能仓位过重（54.3% > 建议18%）');
+                output('2. 两只高风险股票占比72.4%，风险集中');
+                output('3. 需要严格执行止损纪律');
+                
+                hideLoading();
+                updateStatus('快速分析完成');
+            }, 1500);
+        }
+        
+        // 生成报告
+        function generateReport() {
+            showLoading('正在生成今日报告...');
+            updateStatus('生成报告中');
+            output('\n========================================');
+            output('📄 开始生成今日报告...');
+            
+            const steps = [
+                '收集持仓数据...',
+                '获取市场行情...',
+                '分析股票走势...',
+                '计算风险等级...',
+                '生成投资建议...',
+                '创建HTML报告...',
+                '创建Markdown报告...'
+            ];
+            
+            let stepIndex = 0;
+            const interval = setInterval(() => {
+                if (stepIndex < steps.length) {
+                    output(`  ${stepIndex + 1}. ${steps[stepIndex]}`);
+                    stepIndex++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        output('✅ 报告生成完成！');
+                        output('📂 报告已保存到:');
+                        output('   - reports/html/深度复盘与明日投资计划_20260402.html');
+                        output('   - reports/markdown/深度复盘与明日投资计划_20260402.md');
+                        hideLoading();
+                        updateStatus('报告生成完成');
+                        
+                        // 更新报告数量
+                        const reportCount = parseInt(document.getElementById('report-count').textContent);
+                        document.getElementById('report-count').textContent = (reportCount + 1).toString();
+                    }, 500);
+                }
+            }, 500);
+        }
+        
+        // 显示持仓
+        function showPositions() {
+            updateStatus('显示持仓信息');
+            output('\n========================================');
+            output('📈 当前持仓详情：');
+            output('\n1. 中国能建 (601868.SH)');
+            output('   持仓数量: 400股');
+            output('   当前价格: ¥3.20');
+            output('   持仓市值: ¥1280.00 (27.6%)');
+            output('   股票类型: 价值股');
+            output('   风险等级: 中等');
+            output('   目标仓位: 15%');
+            output('   建议: 基建龙头股，适合长期持有');
+            
+            output('\n2. 协鑫集成 (002506.SZ)');
+            output('   持仓数量: 400股');
+            output('   当前价格: ¥2.10');
+            output('   持仓市值: ¥840.00 (18.1%)');
+            output('   股票类型: 成长股');
+            output('   风险等级: 高风险');
+            output('   目标仓位: 12%');
+            output('   建议: 光伏概念股，波段操作');
+            
+            output('\n3. 金开新能 (600821.SH)');
+            output('   持仓数量: 600股');
+            output('   当前价格: ¥4.20');
+            output('   持仓市值: ¥2520.00 (54.3%)');
+            output('   股票类型: 概念股');
+            output('   风险等级: 高风险');
+            output('   目标仓位: 18%');
+            output('   建议: 新能源概念，严格止损');
+            
+            output('\n📊 持仓统计：');
+            output('   总持仓股票: 3只');
+            output('   总持仓市值: ¥4640.00');
+            output('   平均风险等级: 中高');
+            output('   建议操作: 降低金开新能仓位至20%以下');
+        }
+        
+        // 管理持仓
+        function managePositions() {
+            output('\n========================================');
+            output('⚙️ 持仓管理功能开发中...');
+            output('计划功能：');
+            output('   1. 添加/删除持仓股票');
+            output('   2. 修改持仓数量');
+            output('   3. 导入/导出持仓信息');
+            output('   4. 仓位再平衡建议');
+            updateStatus('持仓管理');
+        }
+        
+        // 保存输出
+        function saveOutput() {
+            const content = document.getElementById('output').textContent;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `股票分析输出_${new Date().toISOString().slice(0,10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            output('✅ 输出已保存为文件');
+            updateStatus('输出已保存');
+        }
+        
+        // 显示帮助
+        function showHelp() {
+            const helpText = `
+🎯 七步法股票分析系统 - 使用帮助
+
+主要功能：
+1. 🚀 一键完整分析 - 运行完整的七步法分析流程
+2. 📊 快速持仓分析 - 快速查看当前持仓情况和建议
+3. 📄 生成今日报告 - 创建HTML和Markdown格式的报告
+4. 📈 查看持仓管理 - 管理您的持仓股票信息
+
+使用技巧：
+- 点击按钮后，结果会显示在输出区域
+- 可以清空输出区域或保存输出内容
+- 报告会保存在 reports/ 目录下
+- 支持复制输出内容
+
+注意事项：
+- 这是基于浏览器的演示界面
+- 实际分析需要运行Python程序
+- 建议定期更新持仓信息
+- 生成的报告可以分享或打印
+
+如需完整功能，请运行Python程序。
+            `;
+            
+            output('\n========================================');
+            output(helpText);
+            updateStatus('显示帮助');
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTime();
+            updateStatus('就绪');
+        });
+    </script>
+</body>
+</html>

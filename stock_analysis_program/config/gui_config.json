@@ -1,0 +1,44 @@
+{
+  "theme": "light",
+  "update_interval": 5,
+  "auto_refresh": true,
+  "notifications": false,
+  "default_analysis_type": "full",
+  "recent_files": [],
+  "window_size": {
+    "width": 1200,
+    "height": 800
+  },
+  "window_position": {
+    "x": 100,
+    "y": 100
+  },
+  "portfolio_columns": ["代码", "名称", "数量", "成本价", "当前价", "市值", "盈亏", "盈亏率", "操作"],
+  "stock_columns_width": {
+    "代码": 100,
+    "名称": 150,
+    "数量": 80,
+    "成本价": 100,
+    "当前价": 100,
+    "市值": 120,
+    "盈亏": 100,
+    "盈亏率": 100,
+    "操作": 80
+  },
+  "chart_settings": {
+    "kline_days": 30,
+    "show_volume": true,
+    "show_ma": true,
+    "ma_periods": [5, 10, 20]
+  },
+  "analysis_settings": {
+    "auto_save": true,
+    "auto_open_report": false,
+    "notification_on_complete": true
+  },
+  "export_settings": {
+    "default_format": "html",
+    "include_charts": true,
+    "include_tables": true
+  }
+}
