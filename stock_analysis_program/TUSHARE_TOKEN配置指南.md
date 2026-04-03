@@ -37,28 +37,11 @@ $env:TUSHARE_TOKEN="您的Token"
 set TUSHARE_TOKEN=您的Token
 ```
 
-### **方法2：修改代码配置**
+### **唯一推荐方式：环境变量配置**
 
-在 `real_data_backend.py` 文件中直接设置：
+系统现在只支持通过环境变量注入 Token，这样可以避免把敏感信息写进代码、文档或仓库历史。
 
-```python
-# 修改第26行
-self.tushare_token = "您的Token"  # 替换这里
-```
-
-### **方法3：配置文件**
-
-创建配置文件 `config.py`：
-
-```python
-TUSHARE_TOKEN = "您的Token"
-```
-
-然后在 `real_data_backend.py` 中导入：
-
-```python
-from config import TUSHARE_TOKEN
-```
+如果您希望长期生效，可把环境变量写入 shell 配置文件（如 `~/.bashrc`、`~/.zshrc`）。
 
 ## 📊 **支持的API接口**
 
@@ -95,7 +78,7 @@ cd stock_analysis_program
 python3 real_data_backend.py
 
 # 启动Web界面
-python3 -m http.server 8888 --bind localhost
+python3 -m http.server 8888 --bind 0.0.0.0
 ```
 
 ### **访问地址**

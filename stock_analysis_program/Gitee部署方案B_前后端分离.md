@@ -50,13 +50,14 @@
 ```bash
 # 1. 启动后端服务
 cd /Users/yandada/WorkBuddy/Claw/stock_analysis_program
-python3 algorithm_backend.py
+export TUSHARE_TOKEN=your_tushare_pro_token_here
+python3 real_data_backend.py
 
 # 2. 使用ngrok暴露服务（需要注册ngrok账号）
 ngrok http 9000
 # 会得到：https://xxxx-xxx-xxx-xxx.ngrok-free.app
 
-# 3. 修改前端API地址为ngrok地址
+# 3. 将 config.js 的 production 改成 ngrok 地址，或直接运行一键部署脚本自动生成
 ```
 
 #### **选项B：云服务器部署**（最稳定）
@@ -111,23 +112,37 @@ git push gitee main
 #### **步骤3：配置API地址**
 创建配置文件 `config.js`:
 ```javascript
-// config.js
-window.API_CONFIG = {
-    // 开发环境
-    development: 'http://localhost:9000',
-    
-    // 生产环境（根据您的后端选项设置）
-    production: 'https://您的后端API地址'
+window.APP_CONFIG = {
+    version: '2026.04.03-1',
+    api: {
+        development: 'http://localhost:9000',
+        production: 'https://您的公网后端地址',
+        allowQueryOverride: true
+    }
+};
+
+window.resolveApiBaseUrl = function resolveApiBaseUrl() {
+    const config = (window.APP_CONFIG && window.APP_CONFIG.api) || {};
+    const params = new URLSearchParams(window.location.search);
+    const queryApi = config.allowQueryOverride === false ? '' : (params.get('api') || '').trim();
+    const hostname = window.location.hostname;
+    const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const normalize = (value) => (value || '').trim().replace(/\/+$/, '');
+
+    if (queryApi) return normalize(queryApi);
+    if (isLocalHost) return normalize(config.development);
+    return normalize(config.production);
 };
 ```
 
-修改前端代码使用配置：
-```javascript
-// 在web_interface_enhanced.html中添加
-<script src="config.js"></script>
+前端页面中统一读取配置：
+```html
+<script src="config.js?v=20260403-1"></script>
+```
 
-// 修改API地址获取逻辑
-const apiBaseUrl = window.API_CONFIG[process.env.NODE_ENV || 'development'];
+```javascript
+const runtime = window.getApiConfigStatus();
+const apiBaseUrl = runtime.apiBaseUrl;
 ```
 
 #### **步骤4：开启Gitee Pages**
@@ -149,29 +164,26 @@ https://您的用户名.gitee.io/stock-analysis-program/web_interface_enhanced.h
 #### **Tushare API配置**
 1. 注册 https://tushare.pro
 2. 获取API Token
-3. 配置到后端服务
+3. 通过环境变量注入到后端服务
 
-创建 `config/tushare_config.py`:
-```python
-TUSHARE_TOKEN = '您的token'
-TUSHARE_ENDPOINT = 'http://api.tushare.pro'
+```bash
+# macOS / Linux
+export TUSHARE_TOKEN=your_tushare_pro_token_here
+
+# Windows PowerShell
+$env:TUSHARE_TOKEN="your_tushare_pro_token_here"
 ```
+
+> ⚠️ 不要把 Token 写进 `config/tushare_config.py`、前端页面或仓库提交记录。
 
 #### **数据更新机制**
-创建定时任务更新数据：
-```python
-# data_updater.py
-import schedule
-import time
-from algorithm_backend import update_stock_prices
+当前项目的 `real_data_backend.py` 已内置价格缓存与按需刷新逻辑，优先建议直接通过 API 触发更新：
 
-# 每30分钟更新一次股价
-schedule.every(30).minutes.do(update_stock_prices)
-
-while True:
-    schedule.run_pending()
-    time.sleep(60)
+```bash
+curl http://localhost:9000/api/update_prices
 ```
+
+如果后续需要定时任务，再基于 `real_data_provider.py` 或独立调度脚本补充，不建议继续沿用旧的 `algorithm_backend.py` 更新示例。
 
 ---
 
@@ -179,37 +191,20 @@ while True:
 
 ### **1. 后端API服务详细配置**
 
-#### **使用Flask重构后端（推荐）**
-创建 `api_server.py`:
-```python
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-import algorithm_backend
+#### **直接使用仓库内置后端（推荐）**
+本项目已经自带 `real_data_backend.py`，不需要再额外创建 `api_server.py`。
 
-app = Flask(__name__)
-CORS(app)  # 允许跨域访问
-
-@app.route('/api/health')
-def health():
-    return jsonify({"status": "healthy"})
-
-@app.route('/api/positions')
-def get_positions():
-    return jsonify({"positions": algorithm_backend.positions})
-
-@app.route('/api/analyze/<stock_code>')
-def analyze_stock(stock_code):
-    # 调用五维度算法
-    result = algorithm_backend.analyze_stock(stock_code)
-    return jsonify(result)
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=9000, debug=False)
+```bash
+cd /Users/yandada/WorkBuddy/Claw/stock_analysis_program
+export TUSHARE_TOKEN=your_tushare_pro_token_here
+python3 real_data_backend.py
 ```
+
+如果没有配置 `TUSHARE_TOKEN`，后端会自动降级为模拟数据模式，但 API 结构保持不变。
 
 #### **安装依赖**
 ```bash
-pip install flask flask-cors
+pip install -r requirements.txt
 ```
 
 ### **2. 前端跨域配置**
@@ -375,12 +370,13 @@ git clone https://gitee.com/您的用户名/stock-analysis-program.git
 
 # 2. 启动后端服务
 cd stock-analysis-program
-python3 algorithm_backend.py
+export TUSHARE_TOKEN=your_tushare_pro_token_here
+python3 real_data_backend.py
 
 # 3. 使用ngrok暴露服务
 ngrok http 9000
 
-# 4. 修改前端API地址为ngrok地址
+# 4. 更新 config.js 的 production 地址
 # 5. 推送代码到Gitee
 # 6. 开启Gitee Pages
 ```

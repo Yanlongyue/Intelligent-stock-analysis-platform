@@ -134,7 +134,7 @@ class DataSourceConfig:
     """数据源配置"""
     
     # Tushare Pro API配置
-    TUSHARE_TOKEN = ""  # 需要在tushare_config.py中配置
+    TUSHARE_TOKEN = ""  # 通过环境变量 TUSHARE_TOKEN 注入
     TUSHARE_TIMEOUT = 30  # 请求超时时间（秒）
     TUSHARE_RETRY_COUNT = 3  # 重试次数
     

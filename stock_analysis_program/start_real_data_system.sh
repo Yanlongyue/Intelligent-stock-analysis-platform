@@ -32,6 +32,28 @@ fi
 # 创建启动目录
 cd "$(dirname "$0")"
 
+resolve_github_pages_url() {
+    local remote_url slug owner repo
+    remote_url="$(git config --get remote.github.url 2>/dev/null || true)"
+
+    if [ -z "$remote_url" ]; then
+        return 1
+    fi
+
+    slug="$(printf '%s' "$remote_url" | sed -E 's#^git@github\.com:##; s#^https?://([^@/]+@)?github\.com/##; s#\.git$##')"
+    owner="$(printf '%s' "$slug" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')"
+    repo="$(printf '%s' "$slug" | cut -d'/' -f2)"
+
+    if [ -n "$owner" ] && [ -n "$repo" ]; then
+        printf 'https://%s.github.io/%s' "$owner" "$repo"
+        return 0
+    fi
+
+    return 1
+}
+
+GITHUB_PAGES_URL="$(resolve_github_pages_url || true)"
+
 echo ""
 echo "📡 启动服务..."
 echo ""
@@ -46,7 +68,7 @@ sleep 3
 
 # 启动Web服务器
 echo "🌐 启动Web界面服务器 (端口: 8888)"
-python3 -m http.server 8888 --bind localhost &
+python3 -m http.server 8888 --bind 0.0.0.0 &
 WEB_PID=$!
 
 # 显示状态
@@ -55,11 +77,15 @@ echo "✅ 系统启动完成!"
 echo ""
 echo "📌 服务状态:"
 echo "   🔹 真实数据后端: http://localhost:9000/api/health"
-echo "   🔹 Web界面: http://localhost:8888/web_interface_enhanced.html"
+echo "   🔹 真实数据页面: http://localhost:8888/real_data_frontend.html"
+echo "   🔹 增强版页面: http://localhost:8888/web_interface_enhanced.html"
 echo ""
-echo "📌 GitHub Pages在线版本:"
-echo "   🔹 https://yanlongyue.github.io/Intelligent-stock-analysis-platform/web_interface_enhanced.html"
-echo ""
+if [ -n "$GITHUB_PAGES_URL" ]; then
+    echo "📌 GitHub Pages在线版本:"
+    echo "   🔹 ${GITHUB_PAGES_URL}/web_interface_enhanced.html"
+    echo "   🔹 ${GITHUB_PAGES_URL}/real_data_frontend.html"
+    echo ""
+fi
 echo "📌 可用API端点:"
 echo "   🔸 GET /api/health          - 健康检查"
 echo "   🔸 GET /api/positions       - 获取持仓数据"

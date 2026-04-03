@@ -30,15 +30,10 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         # 初始化数据提供者和算法引擎
         self.use_real_data = True  # 默认使用真实数据
-        self.tushare_token = os.getenv('TUSHARE_TOKEN')
-        
-        # DEBUG: 如果环境变量没有Token，您可以在这里手动设置
-        # 请将下面的 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 替换为您的Tushare Token
+        self.tushare_token = (os.getenv('TUSHARE_TOKEN') or '').strip()
+
         if not self.tushare_token:
-            # 手动设置Token - 已配置主人的Token
-            self.tushare_token = "79e520d18d7db694aeb048f3cc577e5b323687a3434e1cfdd32a75cd"
-            if self.tushare_token != "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx":
-                print(f"🔑 使用手动配置的Token: {self.tushare_token[:8]}...")
+            print('⚠️ 未检测到环境变量 TUSHARE_TOKEN，将以模拟数据模式启动。')
         
         # 尝试使用真实数据，如果失败则回退到模拟数据
         self.data_provider = get_data_provider(
@@ -588,9 +583,9 @@ if __name__ == "__main__":
     # 检查Tushare Token
     tushare_token = os.getenv('TUSHARE_TOKEN')
     if not tushare_token:
-        print("⚠️ 警告: 未在环境变量中检测到Tushare Pro API Token")
-        print("💡 提示: 代码中已手动配置Token，系统将使用真实数据模式")
-        print("📊 如果API调用失败，系统会自动回退到模拟数据模式")
+        print("⚠️ 警告: 未在环境变量中检测到 Tushare Pro API Token")
+        print("💡 提示: 请先执行 export TUSHARE_TOKEN=您的Token")
+        print("📊 当前将以模拟数据模式启动，待环境变量配置完成后再切换到真实数据")
     
     # 启动服务
     start_real_data_backend()

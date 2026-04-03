@@ -33,9 +33,14 @@ print_error() {
 
 # 函数：显示帮助信息
 show_help() {
-    echo -e "${GREEN}七步法股票分析程序 - 启动脚本${NC}"
+    echo -e "${GREEN}七步法股票分析程序 - 命令行主入口${NC}"
     echo "================================"
     echo "用法: ./start.sh [命令]"
+    echo ""
+    echo "推荐入口导航:"
+    echo "  ./start_real_data_system.sh   本地真实数据 Web 主入口（推荐）"
+    echo "  ./start.sh analyze            命令行七步法主入口"
+    echo "  ./start_enhanced_system.sh    演示模式入口（模拟数据）"
     echo ""
     echo "可用命令:"
     echo "  help          显示帮助信息"
@@ -48,9 +53,14 @@ show_help() {
     echo "  clean         清理临时文件"
     echo ""
     echo "示例:"
-    echo "  ./start.sh summary     # 显示配置"
-    echo "  ./start.sh test        # 运行测试"
-    echo "  ./start.sh analyze     # 执行分析"
+    echo "  ./start.sh summary              # 显示配置"
+    echo "  ./start.sh test                 # 运行测试"
+    echo "  ./start.sh analyze              # 执行分析"
+    echo "  ./start.sh analyze-date 2026-04-02"
+    echo ""
+    echo "兼容说明:"
+    echo "  启动网络访问系统.sh、启动可视化界面.sh、启动完整GUI.sh、run_complete_gui.py 仍可使用，"
+    echo "  但现在都只承担兼容引导，不再是默认主入口。"
     echo ""
 }
 
@@ -93,25 +103,17 @@ check_dependencies() {
 # 函数：检查Tushare Token配置
 check_token() {
     print_info "检查Tushare Token配置..."
-    
-    if [ ! -f "config/tushare_config.py" ]; then
-        print_warning "Tushare配置文件不存在"
-        echo "请创建 config/tushare_config.py 并配置您的Token"
+
+    if [ -z "$TUSHARE_TOKEN" ]; then
+        print_warning "未检测到环境变量 TUSHARE_TOKEN"
+        echo "请先在当前终端执行："
+        echo "export TUSHARE_TOKEN=您的TushareProToken"
         echo ""
-        echo "示例内容："
-        echo "TOKEN = \"您的Tushare Pro Token\""
-        echo ""
+        echo "出于安全原因，脚本不再从代码文件读取 Token。"
         return 1
     fi
-    
-    # 检查Token是否已配置
-    if grep -q "your_tushare_token_here" config/tushare_config.py; then
-        print_warning "Tushare Token 未配置"
-        echo "请编辑 config/tushare_config.py 文件，将 your_tushare_token_here 替换为您的实际Token"
-        return 1
-    fi
-    
-    print_success "Tushare Token 配置检查通过"
+
+    print_success "Tushare Token 环境变量检查通过"
     return 0
 }
 

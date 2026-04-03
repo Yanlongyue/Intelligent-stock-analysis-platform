@@ -541,85 +541,84 @@ EOF
 test_port_forwarding() {
     echo -e "${YELLOW}🔍 测试端口转发...${NC}"
     echo ""
-    
-    echo "1. 检查本地服务是否运行:"
-    if pgrep -f "python.*run_for_network" > /dev/null; then
-        echo -e "${GREEN}✅ Web服务正在运行${NC}"
-    else
-        echo -e "${RED}❌ Web服务未运行${NC}"
-        echo "   请先运行: python3 run_for_network_access.py"
-    fi
-    
-    echo ""
-    echo "2. 测试本地访问:"
+
+    echo "1. 检查本地 Web 页面:"
     if curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/web_interface_enhanced.html 2>/dev/null | grep -q "200"; then
-        echo -e "${GREEN}✅ 本地访问正常${NC}"
+        echo -e "${GREEN}✅ 本地 Web 页面可访问${NC}"
     else
-        echo -e "${RED}❌ 本地访问失败${NC}"
+        echo -e "${RED}❌ 本地 Web 页面不可访问${NC}"
+        echo "   请先运行: ./start_real_data_system.sh"
     fi
-    
+
+    echo ""
+    echo "2. 检查本地 API:"
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/api/health 2>/dev/null | grep -q "200"; then
+        echo -e "${GREEN}✅ 本地 API 可访问${NC}"
+    else
+        echo -e "${RED}❌ 本地 API 不可访问${NC}"
+        echo "   请先运行: ./start_real_data_system.sh"
+    fi
+
     echo ""
     echo "3. 测试局域网访问:"
     if curl -s -o /dev/null -w "%{http_code}" http://$LOCAL_IP:8888/web_interface_enhanced.html 2>/dev/null | grep -q "200"; then
         echo -e "${GREEN}✅ 局域网访问正常${NC}"
     else
         echo -e "${RED}❌ 局域网访问失败${NC}"
-        echo "   可能原因: 防火墙阻止"
+        echo "   可能原因: 防火墙阻止或服务尚未绑定到 0.0.0.0"
     fi
-    
+
     echo ""
     if [ "$PUBLIC_IP" != "无法获取" ]; then
         echo "4. 测试公网访问 (需要端口转发已配置):"
         echo -e "${YELLOW}   请在其他网络下的设备测试:${NC}"
         echo "   http://$PUBLIC_IP:8888/web_interface_enhanced.html"
+        echo "   如需更稳妥的方案，也可直接使用 Tailscale / Cloudflare Tunnel"
     fi
-    
+
     echo ""
     echo -e "${BLUE}📋 诊断建议:${NC}"
     echo "如果局域网访问失败:"
-    echo "  1. 检查防火墙: sudo ufw status"
-    echo "  2. 临时关闭防火墙测试: sudo ufw disable"
-    echo "  3. 检查端口监听: sudo netstat -tlnp | grep :8888"
+    echo "  1. 先运行 ./start_real_data_system.sh 确认本机服务已启动"
+    echo "  2. 检查防火墙: sudo ufw status"
+    echo "  3. 检查端口监听: lsof -i :8888 && lsof -i :9000"
 }
 
 # 返回本地模式
 local_mode() {
     echo -e "${GREEN}🔄 返回本地访问模式${NC}"
     echo ""
-    
+
     cat << EOF
 本地访问模式:
-  ✅ 最简单，无需网络配置
-  ✅ 零延迟
-  ✅ 最安全
+  ✅ 当前已统一到真实数据主入口
+  ✅ 同时启动前端页面与 API
+  ✅ 若未配置 TUSHARE_TOKEN，会自动降级到模拟数据
 
 启动命令:
 \`\`\`bash
 cd /Users/yandada/WorkBuddy/Claw/stock_analysis_program
-python3 run_enhanced_web.py
+./start_real_data_system.sh
 \`\`\`
 
 访问地址:
   http://localhost:8888/web_interface_enhanced.html
-
-同时启动API服务 (另一个终端):
-\`\`\`bash
-python3 algorithm_backend.py
-\`\`\`
+  http://localhost:8888/real_data_frontend.html
 
 API健康检查:
   http://localhost:9000/api/health
+
+演示模式（模拟数据）:
+\`\`\`bash
+./start_enhanced_system.sh
+\`\`\`
 EOF
-    
-    # 启动本地服务
+
     echo ""
     read -p "是否立即启动本地服务? (y/n): " start_choice
     if [ "$start_choice" = "y" ] || [ "$start_choice" = "Y" ]; then
-        echo -e "${YELLOW}启动本地Web服务...${NC}"
-        python3 run_enhanced_web.py &
-        WEB_PID=$!
-        echo -e "${GREEN}✅ Web服务已启动 (PID: $WEB_PID)${NC}"
-        echo "访问: http://localhost:8888/web_interface_enhanced.html"
+        echo -e "${YELLOW}启动真实数据主入口...${NC}"
+        ./start_real_data_system.sh
     fi
 }
 

@@ -53,7 +53,7 @@ class StockAnalyzerGUI:
     
     def __init__(self, root):
         self.root = root
-        self.root.title("股票分析专业版 - 完整GUI")
+        self.root.title("股票分析专业版 - 完整GUI（兼容模式）")
         self.root.geometry("1200x800")
         
         # 设置窗口图标
@@ -875,7 +875,13 @@ class StockAnalyzerGUI:
             
     def show_manual(self):
         """显示使用手册"""
-        manual_text = """股票分析专业版 GUI 使用手册
+        manual_text = """股票分析专业版 GUI 使用手册（兼容模式）
+
+⚠️ 本桌面 GUI 仅为兼容保留入口，推荐优先使用：
+- ./start_real_data_system.sh
+- ./start_enhanced_system.sh
+
+说明：部分桌面按钮目前仍处于维护/占位状态。
 
 1. 仪表盘
    - 查看持仓股票实时价格
@@ -908,19 +914,21 @@ class StockAnalyzerGUI:
         
     def show_about(self):
         """显示关于信息"""
-        about_text = """股票分析专业版
+        about_text = """股票分析专业版（桌面 GUI 兼容模式）
 版本：1.0.0
 作者：风暴 🌪️
 创建时间：2026年4月2日
 
-功能：
-- 专业的股票分析桌面应用程序
-- 可视化操作界面
-- 实时数据监控
-- 持仓管理
-- 报告生成和查看
+当前状态：
+- 桌面 GUI 为兼容保留入口
+- 默认主入口已切换到 Web 界面
+- 部分桌面功能仍处于维护/占位状态
 
-技术支持：使用Python Tkinter开发
+推荐入口：
+- ./start_real_data_system.sh
+- ./start_enhanced_system.sh
+
+技术支持：使用 Python Tkinter 开发
 """
         messagebox.showinfo("关于", about_text)
         

@@ -1,93 +1,154 @@
 #!/bin/bash
+set -e
 
-echo "🚀 部署真实数据股票分析系统到GitHub Pages"
-echo "=========================================="
+echo "🚀 准备 GitHub Pages 部署文件"
+echo "================================"
 echo ""
 
-# 检查是否在项目目录
-if [ ! -f "real_data_frontend.html" ]; then
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEPLOY_DIR="$REPO_ROOT/deploy_real_data"
+
+cd "$SCRIPT_DIR"
+
+if [ ! -f "$SCRIPT_DIR/real_data_frontend.html" ]; then
     echo "❌ 错误: 请在 stock_analysis_program 目录中运行此脚本"
     exit 1
 fi
 
-# 检查Git状态
-if ! git status &> /dev/null; then
-    echo "❌ 错误: 当前目录不是Git仓库"
+if ! git -C "$REPO_ROOT" status &> /dev/null; then
+    echo "❌ 错误: 当前项目不是 Git 仓库"
     exit 1
 fi
 
-# 创建部署目录
-DEPLOY_DIR="../deploy_real_data"
-echo "📁 创建部署目录: $DEPLOY_DIR"
+resolve_github_slug() {
+    local remote_url slug
+
+    remote_url="$(git -C "$REPO_ROOT" config --get remote.github.url 2>/dev/null || true)"
+    if [ -z "$remote_url" ]; then
+        remote_url="$(git -C "$REPO_ROOT" remote -v 2>/dev/null | grep 'github.com' | awk 'NR==1 {print $2}')"
+    fi
+
+    if [ -z "$remote_url" ]; then
+        return 1
+    fi
+
+    slug="$(printf '%s' "$remote_url" | sed -E 's#^git@github\.com:##; s#^https?://([^@/]+@)?github\.com/##; s#\.git$##')"
+    printf '%s' "$slug"
+}
+
+GITHUB_SLUG="$(resolve_github_slug || true)"
+if [ -n "$GITHUB_SLUG" ]; then
+    GITHUB_OWNER="$(printf '%s' "$GITHUB_SLUG" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')"
+    GITHUB_REPO="$(printf '%s' "$GITHUB_SLUG" | cut -d'/' -f2)"
+    GITHUB_WEB_URL="https://github.com/${GITHUB_SLUG}"
+    GITHUB_REPO_URL="https://github.com/${GITHUB_SLUG}.git"
+    PAGES_BASE="https://${GITHUB_OWNER}.github.io/${GITHUB_REPO}"
+    ONLINE_HINT="已自动识别 GitHub Pages 地址：${PAGES_BASE}"
+else
+    GITHUB_WEB_URL="https://github.com/<your-account>/<your-repo>"
+    GITHUB_REPO_URL="https://github.com/<your-account>/<your-repo>.git"
+    PAGES_BASE=""
+    ONLINE_HINT="未检测到 GitHub 远程；请先添加 github remote，再重新运行脚本生成准确链接。"
+fi
+
+if [ -n "$PAGES_BASE" ]; then
+    REAL_DATA_URL="${PAGES_BASE}/real_data_frontend.html"
+    ENHANCED_URL="${PAGES_BASE}/web_interface_enhanced.html"
+    ROOT_URL="${PAGES_BASE}/"
+else
+    REAL_DATA_URL=""
+    ENHANCED_URL=""
+    ROOT_URL=""
+fi
+
+echo "📁 重建部署目录: $DEPLOY_DIR"
 rm -rf "$DEPLOY_DIR"
 mkdir -p "$DEPLOY_DIR"
 
-# 复制必要文件
-echo "📋 复制文件..."
-cp real_data_frontend.html "$DEPLOY_DIR/"
-cp index.html "$DEPLOY_DIR/"
-cp "TUSHARE_TOKEN配置指南.md" "$DEPLOY_DIR/"
+echo "📋 复制部署文件..."
+cp "$SCRIPT_DIR/real_data_frontend.html" "$DEPLOY_DIR/"
+cp "$SCRIPT_DIR/web_interface_enhanced.html" "$DEPLOY_DIR/"
+cp "$SCRIPT_DIR/config.js" "$DEPLOY_DIR/"
+cp "$SCRIPT_DIR/TUSHARE_TOKEN配置指南.md" "$DEPLOY_DIR/"
 
-# 创建GitHub Pages配置
-echo "📝 创建GitHub Pages配置..."
-cat > "$DEPLOY_DIR/README.md" << 'EOF'
-# 🎯 智能股票分析系统 - 真实数据版
+if [ -f "$SCRIPT_DIR/index.html" ]; then
+    cp "$SCRIPT_DIR/index.html" "$DEPLOY_DIR/"
+fi
 
-基于真实金融数据的五维度算法评分平台。
+echo "📝 生成部署说明..."
+cat > "$DEPLOY_DIR/README.md" <<EOF
+# 🎯 智能股票分析系统 - Pages 部署包
+
+基于真实金融数据的五维度算法评分平台，前端可部署到 GitHub Pages，后端通过独立 API 提供真实数据。
 
 ## 🌐 在线访问
 
-访问地址：https://yanlongyue.github.io/Intelligent-stock-analysis-platform/real_data_frontend.html
+- 增强版页面：${ENHANCED_URL:-请先配置 GitHub Pages 地址}
+- 真实数据页：${REAL_DATA_URL:-请先配置 GitHub Pages 地址}
+- 站点首页：${ROOT_URL:-请先配置 GitHub Pages 地址}
 
-## 📊 系统功能
+> ${ONLINE_HINT}
 
-- **真实数据接入**：通过Tushare Pro API获取实时金融数据
-- **五维度算法**：国际局势、国内政策、企业发展、技术分析、市场情绪
-- **持仓管理**：实时监控持仓盈亏
-- **市场概况**：主要指数、市场情绪、资金流向
-- **风险预警**：基于算法评分的风险等级评估
+## 📦 本次部署包含
 
-## 🔧 数据配置
+- \\`web_interface_enhanced.html\\`：增强版主界面
+- \\`real_data_frontend.html\\`：真实数据专用页面
+- \\`config.js\\`：统一 API 配置入口
+- \\`TUSHARE_TOKEN配置指南.md\\`：Token 配置说明
 
-要使用真实数据，需要配置Tushare Pro API Token。
+## 🔧 真实数据配置
 
-详细配置指南：[TUSHARE_TOKEN配置指南.md](TUSHARE_TOKEN配置指南.md)
+1. 后端机器设置环境变量：\\`export TUSHARE_TOKEN=你的token\\`
+2. 启动后端 API 服务：\\`python3 real_data_backend.py\\`
+3. 在 \\`config.js\\` 中填写公网可访问的 \\`production\\` 地址
+4. 或通过页面参数临时指定：\\`?api=https://你的后端地址\\`
 
-## 📱 使用说明
+## 🧪 本地预览
 
-1. **访问在线版本**：直接通过浏览器访问
-2. **配置API Token**：设置Tushare Token以获取真实数据
-3. **启动本地服务**：如需完整功能，可启动本地后端服务
+### 启动后端
 
-## 🚀 本地开发
-
-### 启动后端服务
-```bash
+\\`\\`\\`bash
 cd stock_analysis_program
 python3 real_data_backend.py
-```
+\\`\\`\\`
 
-### 启动Web界面
-```bash
-python3 -m http.server 8888 --bind localhost
-```
+### 启动静态页面
+
+\\`\\`\\`bash
+cd stock_analysis_program
+python3 -m http.server 8888 --bind 0.0.0.0
+\\`\\`\\`
 
 ### 访问地址
-- Web界面: http://localhost:8888/real_data_frontend.html
-- API服务: http://localhost:9000/api/health
 
-## 📞 技术支持
+- 增强版页面：http://localhost:8888/web_interface_enhanced.html
+- 真实数据页：http://localhost:8888/real_data_frontend.html
+- API 健康检查：http://localhost:9000/api/health
 
-如有问题，请参考项目文档或联系开发者。
+## 🚀 推送步骤
 
----
+将部署目录内容推送到你的 GitHub Pages 仓库：
 
-**注意**：GitHub Pages版本为前端静态页面，真实数据需要配置Tushare Token并启动本地后端服务。
+\\`\\`\\`bash
+cd "$DEPLOY_DIR"
+git init
+git add .
+git commit -m "准备 Pages 部署文件"
+git remote add origin ${GITHUB_REPO_URL}
+git branch -M main
+git push -u origin main
+\\`\\`\\`
+
+## ⚠️ 注意事项
+
+- GitHub Pages 只负责托管静态前端，**不会**运行 Python 后端。
+- 未配置公网 API 时，页面会自动退回模拟数据模式。
+- 不要把 Tushare Token 写进代码或提交到 Git 仓库。
 EOF
 
-# 创建访问重定向
-echo "🔗 创建访问重定向..."
-cat > "$DEPLOY_DIR/real_data_index.html" << 'EOF'
+echo "🔗 生成跳转页面..."
+cat > "$DEPLOY_DIR/real_data_index.html" <<EOF
 <!DOCTYPE html>
 <html>
 <head>
@@ -107,20 +168,11 @@ cat > "$DEPLOY_DIR/real_data_index.html" << 'EOF'
             text-align: center;
         }
         .container {
-            max-width: 600px;
+            max-width: 640px;
             padding: 40px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.12);
             border-radius: 20px;
             backdrop-filter: blur(10px);
-        }
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-        }
-        p {
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-            opacity: 0.9;
         }
         .spinner {
             border: 4px solid rgba(255,255,255,0.3);
@@ -146,97 +198,54 @@ cat > "$DEPLOY_DIR/real_data_index.html" << 'EOF'
     <div class="container">
         <div class="spinner"></div>
         <h1>🎯 智能股票分析系统</h1>
-        <p>正在跳转到真实数据版本...</p>
+        <p>正在跳转到真实数据页面...</p>
         <p>如果未自动跳转，请<a href="real_data_frontend.html">点击这里</a></p>
-        <p style="margin-top: 30px; font-size: 0.9rem; opacity: 0.7;">
-            数据模式：真实数据接入 | 版本：v2.0
-        </p>
+        <p style="margin-top: 24px; opacity: 0.85;">增强版页面：<a href="web_interface_enhanced.html">web_interface_enhanced.html</a></p>
     </div>
 </body>
 </html>
 EOF
 
-# 创建项目结构说明
-cat > "$DEPLOY_DIR/project_structure.md" << 'EOF'
-# 📁 项目结构
+echo "📚 生成项目结构说明..."
+cat > "$DEPLOY_DIR/project_structure.md" <<EOF
+# 📁 部署目录结构
 
-```
+\\`\\`\\`
 deploy_real_data/
-├── real_data_frontend.html     # 真实数据前端界面
-├── real_data_index.html        # 重定向页面
-├── index.html                  # 主页面重定向
-├── README.md                   # 项目说明
-├── TUSHARE_TOKEN配置指南.md    # API配置指南
-└── project_structure.md        # 本文档
-```
+├── config.js
+├── real_data_frontend.html
+├── real_data_index.html
+├── web_interface_enhanced.html
+├── README.md
+├── TUSHARE_TOKEN配置指南.md
+└── project_structure.md
+\\`\\`\\`
 
-## 📄 文件说明
+## 文件说明
 
-### real_data_frontend.html
-- 真实数据版前端界面
-- 连接到本地后端API服务 (http://localhost:9000)
-- 支持真实数据/模拟数据切换
+- \\`config.js\\`：统一管理本地/公网 API 地址
+- \\`real_data_frontend.html\\`：简化版真实数据页面
+- \\`web_interface_enhanced.html\\`：增强版主界面
+- \\`README.md\\`：部署与配置说明
+- \\`TUSHARE_TOKEN配置指南.md\\`：Token 配置教程
 
-### TUSHARE_TOKEN配置指南.md
-- Tushare Pro API Token配置说明
-- API接口列表和使用方法
-- 常见问题解答
+## 相关链接
 
-## 🔗 相关链接
-
-- **GitHub仓库**: https://github.com/Yanlongyue/Intelligent-stock-analysis-platform
-- **在线访问**: https://yanlongyue.github.io/Intelligent-stock-analysis-platform/
-- **真实数据版**: https://yanlongyue.github.io/Intelligent-stock-analysis-platform/real_data_frontend.html
+- GitHub 仓库：${GITHUB_WEB_URL}
+- GitHub Pages：${ROOT_URL:-请先配置 GitHub Pages 地址}
 EOF
 
 echo ""
 echo "✅ 部署文件准备完成！"
-echo ""
-
-# 显示下一步操作
-echo "📋 下一步操作："
-echo "1. 将部署目录推送到GitHub:"
-echo ""
-echo "   cd $DEPLOY_DIR"
-echo "   git init"
-echo "   git add ."
-echo "   git commit -m \"部署真实数据版本\""
-echo "   git remote add origin https://github.com/Yanlongyue/Intelligent-stock-analysis-platform.git"
-echo "   git branch -M main"
-echo "   git push -u origin main"
-echo ""
-echo "2. 或复制文件到现有仓库:"
-echo ""
-echo "   cp -r $DEPLOY_DIR/* /Users/yandada/WorkBuddy/Claw/"
-echo "   cd /Users/yandada/WorkBuddy/Claw"
-echo "   git add ."
-echo "   git commit -m \"添加真实数据版本\""
-echo "   git push"
-echo ""
-echo "3. GitHub Pages会自动构建，访问地址："
-echo "   https://yanlongyue.github.io/Intelligent-stock-analysis-platform/real_data_frontend.html"
-echo ""
-
-# 可选：直接复制到项目根目录
-read -p "是否直接复制到项目根目录并推送到GitHub? (y/N): " choice
-if [[ $choice =~ ^[Yy]$ ]]; then
-    echo "📤 复制文件到项目根目录..."
-    cp -r "$DEPLOY_DIR"/* /Users/yandada/WorkBuddy/Claw/
-    
-    echo "🔗 推送到GitHub..."
-    cd /Users/yandada/WorkBuddy/Claw
-    git add real_data_frontend.html real_data_index.html "TUSHARE_TOKEN配置指南.md" README.md project_structure.md
-    
-    if git commit -m "添加真实数据版本股票分析系统"; then
-        git push
-        echo ""
-        echo "🎉 部署成功！"
-        echo "🌐 访问地址: https://yanlongyue.github.io/Intelligent-stock-analysis-platform/real_data_frontend.html"
-    else
-        echo "⚠️  没有文件变更，跳过提交"
-    fi
+echo "📦 输出目录: $DEPLOY_DIR"
+if [ -n "$PAGES_BASE" ]; then
+    echo "🌐 预期在线地址: $ENHANCED_URL"
+else
+    echo "⚠️  尚未检测到 GitHub 远程，README 中已保留占位说明。"
 fi
 
 echo ""
-echo "📝 部署完成！"
-echo "💡 提示: 真实数据需要配置Tushare Token并启动本地后端服务"
+echo "📋 下一步建议："
+echo "1. 检查 deploy_real_data/ 中的 config.js 和两个 HTML 页面"
+echo "2. 将该目录内容推送到 GitHub Pages 对应仓库"
+echo "3. 配置公网后端 API 后，再访问线上页面验证真实数据"

@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="config.js?v=20260403-1"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -290,7 +291,7 @@
                     <li><strong>真实数据模式</strong>：使用Tushare Pro API获取实时金融数据（需要API Token）</li>
                     <li><strong>模拟数据模式</strong>：当真实数据不可用时自动切换至模拟数据</li>
                 </ul>
-                <p>要使用真实数据，请设置环境变量 <code>TUSHARE_TOKEN</code> 或在代码中配置您的API Token。</p>
+                <p>要使用真实数据，请设置环境变量 <code>TUSHARE_TOKEN</code>，不要再把 Token 写进代码文件。</p>
             </div>
             
             <div id="algorithmAnalysis">
@@ -311,7 +312,38 @@
     
     <script>
         // API配置
-        const API_BASE_URL = 'http://localhost:9000';
+        const API_RUNTIME = window.getApiConfigStatus ? window.getApiConfigStatus() : (() => {
+            const hostname = window.location.hostname;
+            const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+
+            return {
+                apiBaseUrl: isLocalHost ? 'http://localhost:9000' : '',
+                isConfigured: isLocalHost,
+                mode: isLocalHost ? 'development' : 'production',
+                version: 'fallback'
+            };
+        })();
+        const API_BASE_URL = API_RUNTIME.apiBaseUrl;
+
+        function getApiHelpText() {
+            if (API_BASE_URL) {
+                return `请确保后端服务正在运行 (${API_BASE_URL})`;
+            }
+
+            if (API_RUNTIME.mode === 'production') {
+                return '当前公网 API 地址尚未配置，请先在 config.js 中填写 production，或通过 ?api=https://您的后端地址 临时指定。';
+            }
+
+            return '当前本地 API 地址未配置，请检查 config.js 中的 development 设置。';
+        }
+
+        async function fetchApi(path) {
+            if (!API_BASE_URL) {
+                throw new Error(API_RUNTIME.mode === 'production' ? '当前页面尚未配置公网 API 地址' : '当前页面尚未配置本地 API 地址');
+            }
+
+            return fetch(`${API_BASE_URL}${path}`);
+        }
         
         // 加载持仓数据
         async function loadPositions() {
@@ -319,7 +351,7 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i><br>加载持仓数据...</div>';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/positions`);
+                const response = await fetchApi('/api/positions');
                 if (!response.ok) throw new Error('网络请求失败');
                 
                 const data = await response.json();
@@ -395,7 +427,7 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i><br>加载市场数据...</div>';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/market_overview`);
+                const response = await fetchApi('/api/market_overview');
                 if (!response.ok) throw new Error('网络请求失败');
                 
                 const data = await response.json();
@@ -479,7 +511,7 @@
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i><br>执行五维度算法分析...</div>';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/analyze_all`);
+                const response = await fetchApi('/api/analyze_all');
                 if (!response.ok) throw new Error('分析请求失败');
                 
                 const data = await response.json();
@@ -583,7 +615,7 @@
             container.innerHTML = `<div class="loading"><i class="fas fa-spinner fa-spin"></i><br>分析 ${stockCode} ...</div>`;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/analyze/${stockCode}`);
+                const response = await fetchApi(`/api/analyze/${stockCode}`);
                 if (!response.ok) throw new Error('分析请求失败');
                 
                 const data = await response.json();
@@ -629,7 +661,7 @@
             const dataStatusElement = document.getElementById('dataStatus');
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/data_status`);
+                const response = await fetchApi('/api/data_status');
                 if (!response.ok) throw new Error('无法连接到后端服务');
                 
                 const data = await response.json();
@@ -676,7 +708,7 @@
                     <div class="error">
                         <i class="fas fa-exclamation-triangle"></i> 后端服务连接失败
                         <p style="margin-top: 10px; font-size: 0.9rem;">${error.message}</p>
-                        <p style="margin-top: 10px; font-size: 0.9rem;">请确保后端服务正在运行: ${API_BASE_URL}</p>
+                        <p style="margin-top: 10px; font-size: 0.9rem;">${getApiHelpText()}</p>
                         <button class="refresh-btn" onclick="checkSystemStatus()" style="margin-top: 10px;">
                             <i class="fas fa-sync-alt"></i> 重试连接
                         </button>

@@ -58,8 +58,9 @@ case $choice in
     2)
         echo ""
         echo "🧠 启动算法API服务..."
-        echo "API服务将在端口 9000 启动"
-        echo "Web界面需要手动访问 http://localhost:9000"
+        echo "API服务将在端口 9000 启动（模拟数据）"
+        echo "如需打开界面，请另一个终端运行: python3 run_enhanced_web.py"
+        echo "界面地址: http://localhost:8888/web_interface_enhanced.html"
         python3 algorithm_backend.py
         ;;
     3)

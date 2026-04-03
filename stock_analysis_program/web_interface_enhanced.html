@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="config.js?v=20260403-1"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -934,9 +935,48 @@
         ];
         
         let chartInstance = null;
-        let apiBaseUrl = ''; // 部署时自动检测API地址
-        // 开发环境：http://localhost:9000
-        // 生产环境：由部署脚本设置
+        let apiBaseUrl = '';
+
+        function getApiRuntime() {
+            const runtime = window.getApiConfigStatus ? window.getApiConfigStatus() : (() => {
+                const hostname = window.location.hostname;
+                const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+
+                return {
+                    apiBaseUrl: isLocalHost ? 'http://localhost:9000' : '',
+                    isConfigured: isLocalHost,
+                    mode: isLocalHost ? 'development' : 'production',
+                    version: 'fallback'
+                };
+            })();
+
+            apiBaseUrl = runtime.apiBaseUrl;
+            return runtime;
+        }
+
+        function getApiHelpText() {
+            const runtime = getApiRuntime();
+
+            if (runtime.apiBaseUrl) {
+                return `当前接口地址：${runtime.apiBaseUrl}`;
+            }
+
+            if (runtime.mode === 'production') {
+                return '当前公网 API 地址尚未配置，请先在 config.js 中填写 production，或通过 ?api=https://您的后端地址 临时指定。';
+            }
+
+            return '当前本地 API 地址未配置，请检查 config.js 中的 development 设置。';
+        }
+
+        function fetchApi(path) {
+            const runtime = getApiRuntime();
+
+            if (!runtime.isConfigured) {
+                return Promise.reject(new Error(runtime.mode === 'production' ? '当前页面尚未配置公网 API 地址' : '当前页面尚未配置本地 API 地址'));
+            }
+
+            return fetch(`${runtime.apiBaseUrl}${path}`);
+        }
         
         // 初始化函数
         function init() {
@@ -951,20 +991,18 @@
         
         // 检查API连接
         function checkApiConnection() {
-            // 自动检测API地址
-            if (!apiBaseUrl) {
-                // 如果是Gitee Pages部署，使用后端API地址
-                const isGiteePages = window.location.hostname.includes('gitee.io');
-                if (isGiteePages) {
-                    // 这里需要您设置后端API的实际地址
-                    apiBaseUrl = 'https://您的后端API地址';
-                } else {
-                    // 本地开发环境
-                    apiBaseUrl = 'http://localhost:9000';
-                }
+            const runtime = getApiRuntime();
+
+            if (!runtime.isConfigured) {
+                console.warn('⚠️ API地址未配置，使用模拟数据');
+                document.getElementById('connection-status').textContent = 'API未配置 (使用模拟数据)';
+                document.getElementById('status-dot').style.backgroundColor = '#f39c12';
+                output(`⚠️ ${getApiHelpText()}`);
+                simulateAlgorithmScores();
+                return;
             }
-            
-            fetch(`${apiBaseUrl}/api/health`)
+
+            fetchApi('/api/health')
                 .then(response => {
                     if (response.ok) {
                         document.getElementById('connection-status').textContent = 'API已连接';
@@ -981,6 +1019,7 @@
                     console.warn('⚠️ API服务未连接，使用模拟数据:', error.message);
                     document.getElementById('connection-status').textContent = 'API未连接 (使用模拟数据)';
                     document.getElementById('status-dot').style.backgroundColor = '#f39c12';
+                    output(`⚠️ ${getApiHelpText()}`);
                     
                     // 使用本地模拟数据
                     simulateAlgorithmScores();
@@ -989,7 +1028,7 @@
         
         // 从API获取持仓数据
         function fetchPositionsFromApi() {
-            fetch(`${apiBaseUrl}/api/positions`)
+            fetchApi('/api/positions')
                 .then(response => response.json())
                 .then(data => {
                     if (data.positions && data.positions.length > 0) {
@@ -1011,7 +1050,7 @@
         function analyzeCurrentStock() {
             const stockCode = positions.find(p => p.name === currentStock)?.code;
             if (stockCode) {
-                fetch(`${apiBaseUrl}/api/analyze/${stockCode}`)
+                fetchApi(`/api/analyze/${stockCode}`)
                     .then(response => response.json())
                     .then(data => {
                         if (!data.error) {
@@ -1303,7 +1342,7 @@
                 // 使用API进行分析
                 const stockCode = positions.find(p => p.name === currentStock)?.code;
                 if (stockCode) {
-                    fetch(`${apiBaseUrl}/api/analyze/${stockCode}`)
+                    fetchApi(`/api/analyze/${stockCode}`)
                         .then(response => response.json())
                         .then(data => {
                             if (!data.error) {
@@ -1498,7 +1537,7 @@
                     <td>${pos.amount}</td>
                     <td>¥${pos.currentPrice.toFixed(2)}</td>
                     <td>¥${value.toFixed(2)}</td>
-                    <td style="color: ${profit >= 0 ? 'green' : 'red'}">${profit >= 0 ? '+' : ''}¥${profit.toFixed(2)}</td>
+                    <td style="color: ${profit >= 0 ? '#e74c3c' : '#27ae60'}">${profit >= 0 ? '+' : ''}¥${profit.toFixed(2)}</td>
                 </tr>`;
             }).join('')}
         </table>
@@ -1654,7 +1693,7 @@
                     <td>¥${pos.currentPrice.toFixed(2)}</td>
                     <td>¥${value.toFixed(2)}</td>
                     <td>¥${pos.costPrice.toFixed(2)}</td>
-                    <td style="color: ${profit >= 0 ? 'green' : 'red'}">
+                    <td style="color: ${profit >= 0 ? '#e74c3c' : '#27ae60'}">
                         ${profit >= 0 ? '+' : ''}¥${profit.toFixed(2)} (${profitPercent}%)
                     </td>
                     <td>${((value / totalValue) * 100).toFixed(1)}%</td>
@@ -1803,11 +1842,11 @@
             const connectionStatus = document.getElementById('connection-status').textContent;
             if (connectionStatus.includes('API已连接')) {
                 // 使用API更新数据
-                fetch(`${apiBaseUrl}/api/update_prices`)
+                fetchApi('/api/update_prices')
                     .then(response => response.json())
                     .then(data => {
                         // 重新获取持仓数据
-                        return fetch(`${apiBaseUrl}/api/positions`);
+                        return fetchApi('/api/positions');
                     })
                     .then(response => response.json())
                     .then(data => {
@@ -1818,7 +1857,7 @@
                             // 重新分析当前股票
                             const stockCode = positions.find(p => p.name === currentStock)?.code;
                             if (stockCode) {
-                                return fetch(`${apiBaseUrl}/api/analyze/${stockCode}`);
+                                return fetchApi(`/api/analyze/${stockCode}`);
                             }
                         }
                         throw new Error('无法获取更新后的数据');

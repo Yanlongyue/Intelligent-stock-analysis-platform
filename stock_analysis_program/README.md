@@ -72,38 +72,43 @@ pip install -r requirements.txt
 ```
 
 ### 3. 配置Tushare Token
-编辑 `config/tushare_config.py`:
-```python
-# 您的Tushare Pro Token
-TOKEN = "your_tushare_pro_token_here"  # ⚠️ 替换为您的实际Token
+通过环境变量注入 `TUSHARE_TOKEN`：
+```bash
+# macOS / Linux
+export TUSHARE_TOKEN=your_tushare_pro_token_here
 
-# 注意事项：数据是分析的基石，数据错了，分析再多都是错的
-# 请确保Token有效，否则程序无法获取真实数据
+# Windows PowerShell
+$env:TUSHARE_TOKEN="your_tushare_pro_token_here"
 ```
 
-### 4. 运行程序
+> ⚠️ 不要把 Token 写进代码或提交到仓库。
+
+### 4. 推荐启动入口
+
+| 使用场景 | 推荐入口 | 说明 |
+|---|---|---|
+| **本地真实数据 Web 界面（推荐）** | `./start_real_data_system.sh` | 同时启动 8888 前端和 9000 API；若未配置 `TUSHARE_TOKEN` 会自动降级为模拟数据 |
+| **命令行七步法主程序** | `./start.sh analyze` | 统一命令行主入口；也支持 `summary`、`test`、`analyze-date` |
+| **本地演示界面（模拟数据）** | `./start_enhanced_system.sh` | 五维度算法演示模式，不依赖真实行情接口 |
+
 ```bash
 # 进入程序目录
 cd /Users/yandada/WorkBuddy/Claw/stock_analysis_program
 
-# 显示配置摘要
-python3 src/main.py --summary
+# 推荐 1：启动真实数据 Web 系统
+./start_real_data_system.sh
 
-# 运行测试模式（验证记忆管理和API连接）
-python3 src/main.py --test
+# 推荐 2：命令行查看配置 / 测试 / 执行分析
+./start.sh summary
+./start.sh test
+./start.sh analyze
+./start.sh analyze-date 2026-04-02
 
-# 运行完整七步法分析
-python3 src/main.py
-
-# 指定分析日期（如测试历史数据）
-python3 src/main.py --date 2026-04-02
-
-# 运行各个模块的独立测试
-python3 src/data_fetcher.py       # 测试数据获取模块
-python3 src/analysis_engine.py    # 测试分析引擎模块
-python3 src/report_generator.py   # 测试报告生成模块
-python3 src/quality_checker.py    # 测试质量检查模块
+# 推荐 3：仅打开演示版界面（模拟数据）
+./start_enhanced_system.sh
 ```
+
+> 兼容旧入口：`python3 analyze_position_stocks.py`、`python3 run_demo.py`、`python3 run_web_interface.py`、`python3 run_for_network_access.py`、`python3 run_complete_gui.py`、`python3 complete_gui_main.py`、`./启动完整GUI.sh`、`web_interface.html` 仍保留；其中旧脚本现在都只是兼容包装层或遗留入口，会自动引导到统一入口，桌面 GUI 线也仅作兼容维护。
 
 ### 5. Git部署
 ```bash
@@ -126,8 +131,8 @@ git push -u origin master
 ```
 
 ### 6. 注意事项
-1. **配置文件**: `config/tushare_config.py` 包含您的个人Token，不要提交到Git
-2. **示例配置**: 使用 `config/tushare_config_example.py` 作为示例，用户需要复制并配置自己的Token
+1. **Token注入方式**: 请通过环境变量 `TUSHARE_TOKEN` 注入，不要把 Token 写进代码或提交到 Git
+2. **示例配置**: `config/tushare_config_example.py` 仅演示环境变量读取方式
 3. **数据目录**: `data/`, `reports/`, `logs/`, `templates/` 目录会自动创建，不需要手动提交
 4. **Python缓存**: `.gitignore` 已配置排除Python缓存文件和虚拟环境
 

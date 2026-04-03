@@ -76,22 +76,12 @@ quick_deploy() {
         return 1
     fi
     
-    # 创建配置文件
-    echo "正在创建配置文件..."
-    cat > config.js << EOF
-// 智能股票分析系统 - API配置
-window.API_CONFIG = {
-    // 开发环境
-    development: 'http://localhost:9000',
-    
-    // 生产环境（ngrok地址，部署时更新）
-    production: 'https://YOUR_NGROK_URL'
-};
-EOF
-    
     # 启动后端服务
-    echo "启动后端API服务..."
-    python3 algorithm_backend.py &
+    echo "启动真实数据后端API服务..."
+    if [ -z "$TUSHARE_TOKEN" ]; then
+        echo -e "${YELLOW}⚠️  未检测到 TUSHARE_TOKEN，后端会以模拟数据模式启动${NC}"
+    fi
+    python3 real_data_backend.py &
     BACKEND_PID=$!
     echo -e "${GREEN}✅ 后端服务已启动 (PID: $BACKEND_PID)${NC}"
     
@@ -112,9 +102,45 @@ EOF
     fi
     
     echo -e "${GREEN}✅ ngrok地址: $NGROK_URL${NC}"
-    
-    # 更新配置文件中的API地址
-    sed -i '' "s|https://YOUR_NGROK_URL|$NGROK_URL|g" config.js
+
+    # 创建配置文件
+    echo "正在创建配置文件..."
+    cat > config.js << EOF
+// 智能股票分析系统 - 统一运行时配置
+window.APP_CONFIG = {
+    version: '2026.04.03-1',
+    api: {
+        development: 'http://localhost:9000',
+        production: '$NGROK_URL',
+        allowQueryOverride: true
+    }
+};
+
+window.resolveApiBaseUrl = function resolveApiBaseUrl() {
+    const config = (window.APP_CONFIG && window.APP_CONFIG.api) || {};
+    const params = new URLSearchParams(window.location.search);
+    const queryApi = config.allowQueryOverride === false ? '' : (params.get('api') || '').trim();
+    const hostname = window.location.hostname;
+    const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const normalize = (value) => (value || '').trim().replace(/\/+$/, '');
+
+    if (queryApi) return normalize(queryApi);
+    if (isLocalHost) return normalize(config.development);
+    return normalize(config.production);
+};
+
+window.getApiConfigStatus = function getApiConfigStatus() {
+    const hostname = window.location.hostname;
+    const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const apiBaseUrl = window.resolveApiBaseUrl();
+    return {
+        apiBaseUrl,
+        isConfigured: Boolean(apiBaseUrl),
+        mode: isLocalHost ? 'development' : 'production',
+        version: window.APP_CONFIG && window.APP_CONFIG.version
+    };
+};
+EOF
     
     # 添加远程仓库
     echo "配置Gitee远程仓库..."
@@ -127,12 +153,25 @@ EOF
     else
         echo -e "${GREEN}✅ 远程仓库配置成功${NC}"
     fi
+
+    CURRENT_BRANCH="$(git branch --show-current 2>/dev/null)"
+    if [ -z "$CURRENT_BRANCH" ]; then
+        CURRENT_BRANCH="master"
+    fi
     
     # 推送代码
     echo "推送代码到Gitee..."
     git add .
-    git commit -m "部署到Gitee Pages - $(date '+%Y-%m-%d %H:%M:%S')"
-    git push gitee main --force
+    if git diff --cached --quiet; then
+        echo -e "${YELLOW}ℹ️  当前没有新的文件改动，直接推送现有分支${NC}"
+    else
+        git commit -m "部署到Gitee Pages - $(date '+%Y-%m-%d %H:%M:%S')" || {
+            echo -e "${RED}❌ 自动提交失败，请先处理 Git 状态后重试${NC}"
+            kill $BACKEND_PID $NGROK_PID 2>/dev/null
+            return 1
+        }
+    fi
+    git push -u gitee "$CURRENT_BRANCH"
     
     if [ $? -ne 0 ]; then
         echo -e "${YELLOW}⚠️  代码推送失败，请检查Gitee仓库是否存在${NC}"
@@ -147,7 +186,9 @@ EOF
     echo -e "${GREEN}🎉 部署完成！${NC}"
     echo ""
     echo "🔗 访问地址:"
-    echo "  前端: https://$gitee_username.gitee.io/stock-analysis-program/web_interface_enhanced.html"
+    echo "  主页: https://$gitee_username.gitee.io/stock-analysis-program/"
+    echo "  增强版页面: https://$gitee_username.gitee.io/stock-analysis-program/web_interface_enhanced.html"
+    echo "  真实数据页面: https://$gitee_username.gitee.io/stock-analysis-program/real_data_frontend.html"
     echo "  后端API: $NGROK_URL"
     echo ""
     echo "📱 手机访问:"
@@ -191,8 +232,8 @@ full_deploy() {
     echo "   - 安装Python3和pip"
     echo "   - 克隆项目代码"
     echo "   - 安装依赖：pip install flask flask-cors"
-    echo "   - 配置Tushare API Token"
-    echo "   - 启动服务：nohup python3 api_server.py &"
+    echo "   - 通过环境变量配置 TUSHARE_TOKEN"
+    echo "   - 启动服务：nohup python3 real_data_backend.py &"
     echo ""
     echo "3. 域名配置："
     echo "   - 购买域名（可选）"
@@ -263,17 +304,18 @@ python3 -m venv venv
 source venv/bin/activate
 
 # 安装依赖
-pip install flask flask-cors requests
+pip install -r requirements.txt
 
 # 配置Tushare Token
-echo "TUSHARE_TOKEN='your_token_here'" > config/tushare_config.py
+export TUSHARE_TOKEN='your_token_here'
+# 生产环境请改为在服务进程或部署平台中安全注入环境变量，避免写入代码文件
 
 # 创建启动脚本
 cat > start_server.sh << 'SCRIPT'
 #!/bin/bash
 source ~/stock-analysis/stock-analysis-program/venv/bin/activate
 cd ~/stock-analysis/stock-analysis-program
-python3 api_server.py
+python3 real_data_backend.py
 SCRIPT
 
 chmod +x start_server.sh
@@ -337,7 +379,7 @@ USER appuser
 EXPOSE 9000
 
 # 启动命令
-CMD ["python", "api_server.py"]
+CMD ["python", "real_data_backend.py"]
 EOF
 
     cat > docker-compose.yml << 'EOF'

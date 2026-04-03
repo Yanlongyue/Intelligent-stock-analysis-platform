@@ -42,6 +42,6 @@ for i, principle in enumerate(config.CORE_PRINCIPLES, 1):
 
 print("\n✅ 快速测试完成!")
 print("\n下一步:")
-print("1. 配置Tushare Token: 编辑 config/tushare_config.py")
+print("1. 配置Tushare Token: export TUSHARE_TOKEN=您的Token")
 print("2. 运行完整测试: python3 test_basic.py")
 print("3. 运行主程序: python3 src/main.py --summary")

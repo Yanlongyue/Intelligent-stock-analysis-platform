@@ -4,14 +4,19 @@
 测试Tushare Token是否有效
 """
 
+import os
 import tushare as ts
 
 def test_tushare_token():
     """测试Tushare Token"""
     print("🔍 测试Tushare Token有效性...")
-    
-    # 设置Token
-    token = "79e520d18d7db694aeb048f3cc577e5b323687a3434e1cfdd32a75cd"
+
+    token = (os.getenv('TUSHARE_TOKEN') or '').strip()
+    if not token:
+        print("❌ 未检测到环境变量 TUSHARE_TOKEN")
+        print("💡 请先执行: export TUSHARE_TOKEN=您的Token")
+        return False
+
     ts.set_token(token)
     
     try:

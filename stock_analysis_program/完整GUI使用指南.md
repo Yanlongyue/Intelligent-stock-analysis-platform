@@ -2,23 +2,31 @@
 
 ## 🚀 快速启动
 
-### 方法1：使用启动脚本（推荐）
+> ⚠️ 桌面 GUI 已降级为兼容模式，不再作为默认主入口。
+> 日常使用优先推荐 `./start_real_data_system.sh`（真实数据 Web）或 `./start_enhanced_system.sh`（演示模式）。
+
+### 方法1：使用兼容导航脚本（推荐）
 ```bash
 cd /Users/yandada/WorkBuddy/Claw/stock_analysis_program
-./run_complete_gui.py
+./启动完整GUI.sh
 ```
+运行后选择 **3. 兼容旧版桌面 GUI**。
 
-### 方法2：直接运行主程序
+### 方法2：直接运行兼容桌面 GUI 启动器
+```bash
+cd /Users/yandada/WorkBuddy/Claw/stock_analysis_program
+python3 run_complete_gui.py
+```
+该脚本现在只是兼容包装层，会先提示“兼容模式”，再转发到 `complete_gui_main.py`。
+
+### 方法3：直接运行桌面 GUI 主程序（高级/遗留）
 ```bash
 cd /Users/yandada/WorkBuddy/Claw/stock_analysis_program
 python3 complete_gui_main.py
 ```
+仅建议在明确需要旧版桌面界面时使用；它属于遗留桌面入口。
 
-### 方法3：使用Python模块
-```bash
-cd /Users/yandada/WorkBuddy/Claw/stock_analysis_program
-python3 -m complete_gui_main
-```
+> 提醒：桌面 GUI 当前以兼容维护为主，部分按钮和菜单仍是占位实现，日常分析优先走 Web 主入口更稳。
 
 ## 📋 系统要求
 
@@ -41,11 +49,12 @@ pip install -r requirements_gui.txt
 ```
 
 ### 2. 配置Tushare Token
-编辑配置文件：
+通过环境变量配置：
 ```bash
-vim config/tushare_config.py
+export TUSHARE_TOKEN=您的TushareProToken
 ```
-将 `TUSHARE_TOKEN = "您的Tushare Pro Token请填写在这里"` 修改为您的实际Token。
+
+不要把 Token 写入代码文件。
 
 ### 3. 配置持仓
 如果需要修改默认持仓，编辑：
