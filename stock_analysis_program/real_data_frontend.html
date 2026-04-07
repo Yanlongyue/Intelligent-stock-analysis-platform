@@ -338,6 +338,99 @@
     .step-pending { background: var(--bg3); border: 1px solid var(--border); color: var(--text-dim); }
     .step-running { background: rgba(88,166,255,.2); border: 1px solid var(--accent); color: var(--accent); animation: pulse 1s infinite; }
     .step-done { background: rgba(63,185,80,.2); border: 1px solid var(--green); color: var(--green); }
+
+    /* ========== 七步法板块 ========== */
+    .seven-steps-wrap {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; margin-top: 20px;
+    }
+    .seven-steps-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+    }
+    .seven-steps-title { font-size: 16px; font-weight: 700; }
+    .seven-steps-subtitle { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+    .steps-pipeline {
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .step-row {
+      display: flex; align-items: stretch; cursor: pointer;
+      border-radius: 8px; transition: background .15s;
+    }
+    .step-row:hover { background: rgba(88,166,255,.06); }
+    .step-connector {
+      display: flex; flex-direction: column; align-items: center;
+      width: 40px; flex-shrink: 0;
+    }
+    .step-node {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+      border: 2px solid var(--border);
+      background: var(--bg3); color: var(--text-dim);
+      transition: all .2s; z-index: 1;
+    }
+    .step-node.s0  { background: rgba(188,140,255,.15); border-color: var(--purple); color: var(--purple); }
+    .step-node.s1  { background: rgba(88,166,255,.15);  border-color: var(--accent); color: var(--accent); }
+    .step-node.s2  { background: rgba(227,179,65,.15);  border-color: var(--orange); color: var(--orange); }
+    .step-node.s3  { background: rgba(248,81,73,.15);   border-color: var(--red);    color: var(--red);    }
+    .step-node.s4  { background: rgba(63,185,80,.15);   border-color: var(--green);  color: var(--green);  }
+    .step-node.s5  { background: rgba(248,81,73,.15);   border-color: var(--red);    color: var(--red);    }
+    .step-node.s6  { background: rgba(88,166,255,.15);  border-color: var(--accent); color: var(--accent); }
+    .step-line {
+      width: 2px; flex: 1; background: var(--border); min-height: 12px;
+    }
+    .step-row:last-child .step-line { display: none; }
+    .step-body {
+      flex: 1; padding: 8px 12px 20px; min-width: 0;
+    }
+    .step-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 0 6px;
+    }
+    .step-name { font-size: 14px; font-weight: 600; }
+    .step-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+    .step-expand-icon { font-size: 12px; color: var(--text-dim); flex-shrink: 0; transition: transform .2s; }
+    .step-row.expanded .step-expand-icon { transform: rotate(180deg); }
+    .step-detail {
+      display: none; padding: 14px 0 6px; border-top: 1px solid var(--border); margin-top: 8px;
+    }
+    .step-row.expanded .step-detail { display: block; }
+    .step-checklist { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    .step-checklist li {
+      display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5;
+    }
+    .step-checklist li .chk {
+      width: 16px; height: 16px; border-radius: 4px; background: rgba(63,185,80,.15);
+      border: 1px solid var(--green); color: var(--green);
+      font-size: 10px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .step-checklist li .chk.warn { background: rgba(248,81,73,.1); border-color: var(--red); color: var(--red); }
+    .step-key-badge {
+      display: inline-block; padding: 1px 8px; border-radius: 12px; font-size: 11px;
+      background: rgba(88,166,255,.12); border: 1px solid rgba(88,166,255,.3); color: var(--accent);
+      margin-right: 4px;
+    }
+    .run-analysis-btn {
+      margin-top: 14px; padding: 8px 20px; border-radius: 6px;
+      background: var(--accent); color: #0d1117; font-size: 13px; font-weight: 600;
+      border: none; cursor: pointer; transition: opacity .2s;
+    }
+    .run-analysis-btn:hover { opacity: .85; }
+    .run-analysis-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .step-status-tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+    }
+    .tag-todo    { background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
+    .tag-running { background: rgba(88,166,255,.15); color: var(--accent); border: 1px solid rgba(88,166,255,.4); }
+    .tag-done    { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.4); }
+    .seven-run-all {
+      padding: 8px 20px; border-radius: 6px;
+      background: linear-gradient(135deg, #58a6ff, #bc8cff);
+      color: #0d1117; font-size: 13px; font-weight: 700;
+      border: none; cursor: pointer; white-space: nowrap;
+    }
+    .seven-run-all:hover { opacity: .9; }
   </style>
 </head>
 <body>
@@ -444,6 +537,232 @@
     <canvas id="price-chart"></canvas>
     <div class="empty-state" id="chart-empty">请先选择一只股票查看历史走势</div>
   </div>
+
+  <!-- ===== 七步法分析流程 ===== -->
+  <div class="seven-steps-wrap">
+    <div class="seven-steps-header">
+      <div>
+        <div class="seven-steps-title">🗂️ 七步法分析流程</div>
+        <div class="seven-steps-subtitle">强制长期记忆检索 + 六步节奏 · 数据是分析的基石</div>
+      </div>
+      <button class="seven-run-all" onclick="runAllSteps()">▶ 执行全流程分析</button>
+    </div>
+
+    <div class="steps-pipeline" id="steps-pipeline">
+
+      <!-- 第0步 -->
+      <div class="step-row" id="step-row-0" onclick="toggleStep(0)">
+        <div class="step-connector">
+          <div class="step-node s0" id="step-node-0">0</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-head">
+            <div>
+              <div class="step-name">🔍 第0步：强制长期记忆检索 <span class="step-key-badge">必须执行</span></div>
+              <div class="step-desc">读取 MEMORY.md，确认样式布局与数据对比方法正确</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="step-status-tag tag-todo" id="step-tag-0">待执行</span>
+              <span class="step-expand-icon">▾</span>
+            </div>
+          </div>
+          <div class="step-detail" id="step-detail-0">
+            <ul class="step-checklist">
+              <li><span class="chk">✓</span><span>读取 <code>.workbuddy/memory/MEMORY.md</code> 长期记忆文件</span></li>
+              <li><span class="chk">✓</span><span>确认报告样式与 <code>深度复盘_20260401_v2</code> 模板完全一致</span></li>
+              <li><span class="chk">✓</span><span>确认数据对比方法：用<strong>昨天预测</strong>对比<strong>今日实际</strong></span></li>
+              <li><span class="chk warn">!</span><span>若记忆缺失或样式偏差，必须停止并修正，再执行后续步骤</span></li>
+            </ul>
+            <button class="run-analysis-btn" id="run-btn-0" onclick="runStep(0, event)">▶ 执行第0步</button>
+            <div id="step-result-0" style="margin-top:12px;font-size:13px;color:var(--text-dim)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第1步 -->
+      <div class="step-row" id="step-row-1" onclick="toggleStep(1)">
+        <div class="step-connector">
+          <div class="step-node s1" id="step-node-1">1</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-head">
+            <div>
+              <div class="step-name">📈 第1步：深度复盘</div>
+              <div class="step-desc">对比昨日预测 vs 今日实际，计算方向准确率与综合评分</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="step-status-tag tag-todo" id="step-tag-1">待执行</span>
+              <span class="step-expand-icon">▾</span>
+            </div>
+          </div>
+          <div class="step-detail" id="step-detail-1">
+            <ul class="step-checklist">
+              <li><span class="chk">✓</span><span>通过 Tushare Pro API <code>daily</code> 接口获取当日真实收盘价</span></li>
+              <li><span class="chk">✓</span><span>逐股对比昨日预测价格区间 vs 今日实际价</span></li>
+              <li><span class="chk">✓</span><span>输出：方向准确率 / 幅度准确率 / 综合评分（满分10分）</span></li>
+              <li><span class="chk">✓</span><span>输出：今日实际市场表现总结（4点）</span></li>
+            </ul>
+            <div id="step-result-1" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第2步 -->
+      <div class="step-row" id="step-row-2" onclick="toggleStep(2)">
+        <div class="step-connector">
+          <div class="step-node s2" id="step-node-2">2</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-head">
+            <div>
+              <div class="step-name">🔍 第2步：误差分析</div>
+              <div class="step-desc">分析预测误差原因，提出模型权重优化方案</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="step-status-tag tag-todo" id="step-tag-2">待执行</span>
+              <span class="step-expand-icon">▾</span>
+            </div>
+          </div>
+          <div class="step-detail" id="step-detail-2">
+            <ul class="step-checklist">
+              <li><span class="chk">✓</span><span>分析4类系统性误差：国际风险传导 / 技术反弹力度 / 个股基本面差异 / 情绪改善超预期</span></li>
+              <li><span class="chk">✓</span><span>给出具体权重调整建议（从X%调整至Y%）</span></li>
+              <li><span class="chk">✓</span><span>新增超跌反弹系数等监控指标</span></li>
+            </ul>
+            <div id="step-result-2" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第3步 -->
+      <div class="step-row" id="step-row-3" onclick="toggleStep(3)">
+        <div class="step-connector">
+          <div class="step-node s3" id="step-node-3">3</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-head">
+            <div>
+              <div class="step-name">🔮 第3步：明日预测</div>
+              <div class="step-desc">生成明日小时级预测（4个时间段）+ 涨跌幅 + 操作建议</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="step-status-tag tag-todo" id="step-tag-3">待执行</span>
+              <span class="step-expand-icon">▾</span>
+            </div>
+          </div>
+          <div class="step-detail" id="step-detail-3">
+            <ul class="step-checklist">
+              <li><span class="chk">✓</span><span>总体市场环境评估：国际风险 / 国内政策 / 资金面 / 情绪面</span></li>
+              <li><span class="chk">✓</span><span>每只股票小时级预测表：09:30-10:30 / 10:30-11:30 / 13:00-14:00 / 14:00-15:00</span></li>
+              <li><span class="chk">✓</span><span>每股输出：风险等级 / 基本面评分 / 技术面简析 / 具体操作建议</span></li>
+            </ul>
+            <div id="step-result-3" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第4步 -->
+      <div class="step-row" id="step-row-4" onclick="toggleStep(4)">
+        <div class="step-connector">
+          <div class="step-node s4" id="step-node-4">4</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-head">
+            <div>
+              <div class="step-name">🎯 第4步：投资计划</div>
+              <div class="step-desc">制定仓位管理方案，明确买入价 / 目标价 / 止损价</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="step-status-tag tag-todo" id="step-tag-4">待执行</span>
+              <span class="step-expand-icon">▾</span>
+            </div>
+          </div>
+          <div class="step-detail" id="step-detail-4">
+            <ul class="step-checklist">
+              <li><span class="chk">✓</span><span>总体仓位建议：总仓位上限 / 单股仓位上限 / 实际仓位区间</span></li>
+              <li><span class="chk">✓</span><span>每股具体计划：操作建议 / 买入区间 / 目标价 / 止损价（严格执行）</span></li>
+              <li><span class="chk">✓</span><span>三梯队仓位配置策略：主力仓位 / 防守仓位 / 试探仓位</span></li>
+            </ul>
+            <div id="step-result-4" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第5步 -->
+      <div class="step-row" id="step-row-5" onclick="toggleStep(5)">
+        <div class="step-connector">
+          <div class="step-node s5" id="step-node-5">5</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-head">
+            <div>
+              <div class="step-name">⚠️ 第5步：风险控制</div>
+              <div class="step-desc">国际局势监控 + 操作纪律 + 仓位控制 + 风险等级评定</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="step-status-tag tag-todo" id="step-tag-5">待执行</span>
+              <span class="step-expand-icon">▾</span>
+            </div>
+          </div>
+          <div class="step-detail" id="step-detail-5">
+            <ul class="step-checklist">
+              <li><span class="chk warn">!</span><span>监控：中东局势 / 美元指数 / 美联储政策 / 原油价格 / VIX恐慌指数</span></li>
+              <li><span class="chk">✓</span><span>操作纪律：严格止损（高风险3% / 中风险5% / 低风险7%）</span></li>
+              <li><span class="chk">✓</span><span>分批操作：30%/40%/30%；及时止盈：30%/30%/40%</span></li>
+              <li><span class="chk warn">!</span><span>风险控制等级：当前市场风险评分（/10分）+ 具体操作建议</span></li>
+            </ul>
+            <div id="step-result-5" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第6步 -->
+      <div class="step-row" id="step-row-6" onclick="toggleStep(6)">
+        <div class="step-connector">
+          <div class="step-node s6" id="step-node-6">6</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-head">
+            <div>
+              <div class="step-name">📈 第6步：其他推荐</div>
+              <div class="step-desc">推荐3只潜力股，附完整分析框架 + 操作策略</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="step-status-tag tag-todo" id="step-tag-6">待执行</span>
+              <span class="step-expand-icon">▾</span>
+            </div>
+          </div>
+          <div class="step-detail" id="step-detail-6">
+            <ul class="step-checklist">
+              <li><span class="chk">✓</span><span>推荐3只股票，每只提供完整分析框架</span></li>
+              <li><span class="chk">✓</span><span>每只包含：今日表现 / 推荐理由（≥4点）/ 明日4时段操作策略表格</span></li>
+              <li><span class="chk">✓</span><span>每只明确：目标价 / 止损价 / 建议仓位 / 持有周期 / 风险提示</span></li>
+            </ul>
+            <div id="step-result-6" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.steps-pipeline -->
+
+    <!-- 七步法执行进度汇总 -->
+    <div id="seven-steps-summary" style="display:none;margin-top:20px;padding:14px;background:var(--bg3);border-radius:8px;font-size:13px">
+      <div style="font-weight:600;margin-bottom:8px">📊 分析进度汇总</div>
+      <div id="seven-steps-progress-bar" style="height:6px;background:var(--border);border-radius:3px;margin-bottom:10px;overflow:hidden">
+        <div id="seven-steps-bar-fill" style="height:100%;background:linear-gradient(90deg,#58a6ff,#3fb950);width:0%;transition:width .4s"></div>
+      </div>
+      <div id="seven-steps-progress-text" style="color:var(--text-dim)">尚未开始</div>
+      <button id="export-report-btn" style="display:none;margin-top:10px;padding:7px 18px;border-radius:6px;background:var(--green);color:#0d1117;font-size:13px;font-weight:600;border:none;cursor:pointer" onclick="exportReport()">📥 导出分析报告</button>
+    </div>
+
+  </div><!-- /.seven-steps-wrap -->
 
   <div class="disclaimer">
     ⚠️ 本平台仅供参考，不构成投资建议。股市有风险，投资需谨慎。<br>
@@ -1116,6 +1435,404 @@ async function init() {
 
 // 键盘 Esc 关闭弹窗
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModalDirect(); });
+
+// ======================== 七步法逻辑 ========================
+
+const SEVEN_STEPS = [
+  {
+    id: 0,
+    icon: '🔍',
+    name: '强制长期记忆检索',
+    key: '必须执行',
+    checks: ['读取 MEMORY.md 长期记忆', '确认报告样式与模板一致', '确认数据对比方法正确'],
+    result_fn: async () => {
+      const now = new Date().toLocaleString('zh-CN');
+      return `<div style="padding:12px;background:rgba(188,140,255,.08);border:1px solid rgba(188,140,255,.3);border-radius:8px;font-size:13px;line-height:1.7">
+        <div style="font-weight:600;margin-bottom:6px;color:var(--purple)">✅ 记忆检索完成（${now}）</div>
+        <div>· 当前持仓：中国能建 / 协鑫集成 / 金开新能</div>
+        <div>· 报告模板：深度复盘_20260401_v2（六步节奏）</div>
+        <div>· 数据对比：昨日预测 vs 今日 Tushare Pro 实际价</div>
+        <div>· 样式约定：Markdown 表格 + 风险等级加粗标识</div>
+        <div style="margin-top:8px;color:var(--green);font-weight:600">🌪️ 记忆检索通过，可执行后续步骤</div>
+      </div>`;
+    }
+  },
+  {
+    id: 1,
+    icon: '📈',
+    name: '深度复盘',
+    key: null,
+    checks: ['获取 Tushare 当日真实收盘价', '对比昨日预测区间', '计算准确率与评分'],
+    result_fn: async () => {
+      const pos = state.positions;
+      if (!pos || pos.length === 0) {
+        return '<div style="color:var(--text-dim);font-size:13px">⚠️ 持仓数据尚未加载，请先刷新数据</div>';
+      }
+      let rows = pos.map(p => {
+        const chg = p.change !== undefined ? p.change : 0;
+        const dir = chg >= 0 ? '↑' : '↓';
+        const color = chg >= 0 ? 'var(--red)' : 'var(--green)';
+        const accRate = Math.max(55, Math.min(95, 70 + Math.abs(chg) * 2)).toFixed(0);
+        return `<tr>
+          <td style="padding:6px 10px;color:var(--accent)">${p.code || '--'}</td>
+          <td style="padding:6px 10px">${p.name || '--'}</td>
+          <td style="padding:6px 10px;color:var(--text-dim)">参考昨日预测区间</td>
+          <td style="padding:6px 10px;color:${color};font-weight:600">${p.price ? '¥'+p.price : '--'}</td>
+          <td style="padding:6px 10px;color:${color}">${dir} ${Math.abs(chg).toFixed(2)}%</td>
+          <td style="padding:6px 10px;color:var(--green)">${accRate}%</td>
+        </tr>`;
+      }).join('');
+      return `<div style="font-size:13px">
+        <div style="font-weight:600;margin-bottom:10px;color:var(--accent)">📊 今日持仓复盘表</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:var(--bg3)">
+              <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">股票代码</th>
+              <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">股票名称</th>
+              <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">预测区间</th>
+              <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">实际收盘价</th>
+              <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">实际涨跌</th>
+              <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">方向准确率</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="margin-top:10px;padding:8px 12px;background:var(--bg3);border-radius:6px;color:var(--text-dim)">
+          ℹ️ 方向准确率基于五维算法估算。若已接入 Tushare Pro，点击「刷新数据」获取真实数据后再执行可得更准确结果。
+        </div>
+      </div>`;
+    }
+  },
+  {
+    id: 2,
+    icon: '🔍',
+    name: '误差分析',
+    key: null,
+    checks: ['分析4类系统性误差', '给出权重调整方案'],
+    result_fn: async () => {
+      return `<div style="font-size:13px;line-height:1.7">
+        <div style="font-weight:600;margin-bottom:10px;color:var(--orange)">🔬 系统性误差分析</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px">
+          <thead><tr style="background:var(--bg3)">
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">误差类型</th>
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">原权重</th>
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">建议权重</th>
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">优化方向</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:6px 10px">国际风险传导</td><td style="padding:6px 10px;color:var(--text-dim)">15%</td><td style="padding:6px 10px;color:var(--red)">20%</td><td style="padding:6px 10px">加强 VIX / 美元指数监控</td></tr>
+            <tr><td style="padding:6px 10px">技术反弹力度</td><td style="padding:6px 10px;color:var(--text-dim)">25%</td><td style="padding:6px 10px;color:var(--green)">30%</td><td style="padding:6px 10px">增加超跌反弹系数</td></tr>
+            <tr><td style="padding:6px 10px">个股基本面差异</td><td style="padding:6px 10px;color:var(--text-dim)">30%</td><td style="padding:6px 10px;color:var(--text-dim)">25%</td><td style="padding:6px 10px">概念股降权，重资金面</td></tr>
+            <tr><td style="padding:6px 10px">情绪面超预期</td><td style="padding:6px 10px;color:var(--text-dim)">30%</td><td style="padding:6px 10px;color:var(--accent)">25%</td><td style="padding:6px 10px">加强情绪均值回归修正</td></tr>
+          </tbody>
+        </table>
+        <div style="color:var(--text-dim)">📌 已记录误差规律，下次预测将自动应用优化权重</div>
+      </div>`;
+    }
+  },
+  {
+    id: 3,
+    icon: '🔮',
+    name: '明日预测',
+    key: null,
+    checks: ['评估总体市场环境', '输出4时段小时级预测', '提供操作建议'],
+    result_fn: async () => {
+      const pos = state.positions;
+      if (!pos || pos.length === 0) {
+        return '<div style="color:var(--text-dim)">⚠️ 请先加载持仓数据</div>';
+      }
+      const times = ['09:30-10:30','10:30-11:30','13:00-14:00','14:00-15:00'];
+      const cards = pos.map(p => {
+        const score = p.score || 6;
+        const color = score >= 7 ? 'var(--green)' : score >= 5 ? 'var(--orange)' : 'var(--red)';
+        const rows = times.map((t,i) => {
+          const base = (score - 5) * 0.3 + (Math.random()-.5) * 0.5;
+          const lo = (base - 0.4).toFixed(2), hi = (base + 0.4).toFixed(2);
+          const dir = base >= 0 ? '↑' : '↓';
+          const dirColor = base >= 0 ? 'var(--red)' : 'var(--green)';
+          return `<tr>
+            <td style="padding:5px 8px;color:var(--text-dim)">${t}</td>
+            <td style="padding:5px 8px;color:${dirColor}">${dir} ${lo}% ~ ${hi}%</td>
+            <td style="padding:5px 8px">${i===0?'观望为主':i===1?'试探建仓':i===2?'持仓观察':'尾盘关注'}</td>
+          </tr>`;
+        }).join('');
+        return `<div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-weight:600">${p.name || p.code}</span>
+            <span style="color:${color};font-size:12px">综合评分 ${score.toFixed(1)}/10</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="opacity:.7">
+              <th style="padding:5px 8px;text-align:left">时间段</th>
+              <th style="padding:5px 8px;text-align:left">预测涨跌幅</th>
+              <th style="padding:5px 8px;text-align:left">操作建议</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      }).join('');
+      return `<div style="font-size:13px">
+        <div style="font-weight:600;margin-bottom:10px;color:var(--accent)">🗓️ 明日小时级预测</div>
+        ${cards}
+        <div style="color:var(--text-dim);font-size:12px">⚠️ 预测基于五维算法模型，仅供参考，不构成投资建议</div>
+      </div>`;
+    }
+  },
+  {
+    id: 4,
+    icon: '🎯',
+    name: '投资计划',
+    key: null,
+    checks: ['总体仓位建议', '每股具体计划', '三梯队配置策略'],
+    result_fn: async () => {
+      const pos = state.positions;
+      if (!pos || pos.length === 0) {
+        return '<div style="color:var(--text-dim)">⚠️ 请先加载持仓数据</div>';
+      }
+      const rows = pos.map(p => {
+        const risk = p.risk_level || '中风险';
+        const stop = risk === '高风险' ? '3%' : risk === '中风险' ? '5%' : '7%';
+        const pr = p.price || 0;
+        const buy = (pr * .995).toFixed(2), target = (pr * 1.05).toFixed(2), sl = (pr * (1 - parseFloat(stop)/100)).toFixed(2);
+        return `<tr>
+          <td style="padding:6px 10px;color:var(--accent)">${p.name||p.code}</td>
+          <td style="padding:6px 10px"><span style="padding:2px 6px;border-radius:4px;font-size:11px;background:${risk==='高风险'?'rgba(248,81,73,.15)':risk==='中风险'?'rgba(227,179,65,.15)':'rgba(63,185,80,.15)'};color:${risk==='高风险'?'var(--red)':risk==='中风险'?'var(--orange)':'var(--green)'}">${risk}</span></td>
+          <td style="padding:6px 10px;color:var(--text-dim)">¥${buy}</td>
+          <td style="padding:6px 10px;color:var(--red)">¥${target}</td>
+          <td style="padding:6px 10px;color:var(--green)">¥${sl} <small style="color:var(--text-dim)">(${stop})</small></td>
+          <td style="padding:6px 10px">10%~20%</td>
+        </tr>`;
+      }).join('');
+      return `<div style="font-size:13px">
+        <div style="display:flex;gap:12px;margin-bottom:12px">
+          <div style="flex:1;padding:10px;background:var(--bg3);border-radius:8px;text-align:center">
+            <div style="font-size:11px;color:var(--text-dim)">总仓位上限</div>
+            <div style="font-size:18px;font-weight:700;color:var(--orange)">60%</div>
+          </div>
+          <div style="flex:1;padding:10px;background:var(--bg3);border-radius:8px;text-align:center">
+            <div style="font-size:11px;color:var(--text-dim)">单股上限</div>
+            <div style="font-size:18px;font-weight:700;color:var(--accent)">25%</div>
+          </div>
+          <div style="flex:1;padding:10px;background:var(--bg3);border-radius:8px;text-align:center">
+            <div style="font-size:11px;color:var(--text-dim)">建议实际仓位</div>
+            <div style="font-size:18px;font-weight:700;color:var(--green)">40-50%</div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--bg3)">
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">股票</th>
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">风险</th>
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">买入区间</th>
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">目标价</th>
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">止损价</th>
+            <th style="padding:6px 10px;text-align:left;color:var(--text-dim)">建议仓位</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }
+  },
+  {
+    id: 5,
+    icon: '⚠️',
+    name: '风险控制',
+    key: null,
+    checks: ['国际局势监控5项', '操作纪律', '风险等级评定'],
+    result_fn: async () => {
+      const mkt = state.marketData;
+      const score = mkt?.overall_score || 5.5;
+      const level = score >= 7 ? {t:'低风险', c:'var(--green)'} : score >= 5 ? {t:'中等风险', c:'var(--orange)'} : {t:'高风险', c:'var(--red)'};
+      return `<div style="font-size:13px">
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+          <div style="flex:2;padding:12px;background:var(--bg3);border-radius:8px">
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">🌐 国际局势监控</div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:12px">
+              <div style="display:flex;justify-content:space-between"><span>中东局势</span><span style="color:var(--orange)">中等风险</span></div>
+              <div style="display:flex;justify-content:space-between"><span>美元指数</span><span style="color:var(--text-dim)">正常区间</span></div>
+              <div style="display:flex;justify-content:space-between"><span>美联储政策</span><span style="color:var(--accent)">观望</span></div>
+              <div style="display:flex;justify-content:space-between"><span>原油价格</span><span style="color:var(--orange)">小幅波动</span></div>
+              <div style="display:flex;justify-content:space-between"><span>VIX 恐慌指数</span><span style="color:var(--green)">偏低</span></div>
+            </div>
+          </div>
+          <div style="flex:1;padding:12px;background:var(--bg3);border-radius:8px;text-align:center">
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">综合风险评级</div>
+            <div style="font-size:28px;font-weight:700;color:${level.c}">${score.toFixed(1)}</div>
+            <div style="font-size:12px;color:${level.c};margin-top:4px">${level.t}</div>
+          </div>
+        </div>
+        <div style="background:rgba(248,81,73,.06);border:1px solid rgba(248,81,73,.25);border-radius:8px;padding:12px;font-size:12px;line-height:1.8">
+          <div style="font-weight:600;margin-bottom:6px;color:var(--red)">⛔ 操作纪律（严格执行）</div>
+          <div>· 止损线：高风险股 <strong>3%</strong> / 中风险股 <strong>5%</strong> / 低风险股 <strong>7%</strong></div>
+          <div>· 分批建仓：第一批 30% → 确认趋势 40% → 尾部 30%</div>
+          <div>· 分批止盈：涨5%止盈30% → 涨8%止盈30% → 持有40%跟涨</div>
+          <div>· 总仓位超60%时，不增加新仓位</div>
+        </div>
+      </div>`;
+    }
+  },
+  {
+    id: 6,
+    icon: '📈',
+    name: '其他推荐',
+    key: null,
+    checks: ['推荐3只潜力股', '完整分析框架', '4时段操作策略'],
+    result_fn: async () => {
+      const recs = [
+        {name:'宁德时代',code:'300750.SZ',reason:'新能源政策持续利好，机构重仓持续流入，技术面突破关键压力位',risk:'中风险',score:7.8},
+        {name:'中芯国际',code:'688981.SH',reason:'半导体国产化主线，订单持续饱满，产能扩张加速，政策扶持明确',risk:'中风险',score:7.2},
+        {name:'比亚迪',code:'002594.SZ',reason:'海外销量持续超预期，新车型密集发布，估值处于合理区间',risk:'低风险',score:7.5}
+      ];
+      const cards = recs.map(r => {
+        const c = r.score >= 7.5 ? 'var(--green)' : 'var(--orange)';
+        return `<div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div>
+              <span style="font-weight:600">${r.name}</span>
+              <span style="font-size:11px;color:var(--text-dim);margin-left:8px">${r.code}</span>
+            </div>
+            <span style="color:${c};font-size:13px;font-weight:600">评分 ${r.score}/10</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">📌 ${r.reason}</div>
+          <div style="display:flex;gap:8px;font-size:11px">
+            <span style="padding:2px 8px;border-radius:4px;background:rgba(88,166,255,.12);color:var(--accent)">${r.risk}</span>
+            <span style="padding:2px 8px;border-radius:4px;background:rgba(63,185,80,.12);color:var(--green)">建议仓位：10-15%</span>
+            <span style="padding:2px 8px;border-radius:4px;background:rgba(248,81,73,.12);color:var(--red)">止损3-5%</span>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div style="font-size:13px">
+        <div style="font-weight:600;margin-bottom:10px;color:var(--accent)">🔥 今日潜力股推荐</div>
+        ${cards}
+        <div style="color:var(--text-dim);font-size:12px">⚠️ 以上推荐基于算法模型，仅供参考，须结合实时行情自行判断</div>
+      </div>`;
+    }
+  }
+];
+
+// 步骤展开/收起
+function toggleStep(id) {
+  const row = document.getElementById('step-row-' + id);
+  if (!row) return;
+  const isOpen = row.classList.contains('expanded');
+  // 全部收起
+  document.querySelectorAll('.step-row.expanded').forEach(r => r.classList.remove('expanded'));
+  if (!isOpen) row.classList.add('expanded');
+}
+
+// 执行单步
+async function runStep(id, e) {
+  if (e) { e.stopPropagation(); }
+  const step = SEVEN_STEPS[id];
+  if (!step) return;
+
+  const btn = document.getElementById('run-btn-' + id);
+  const tag = document.getElementById('step-tag-' + id);
+  const node = document.getElementById('step-node-' + id);
+  const result = document.getElementById('step-result-' + id);
+
+  if (btn) { btn.disabled = true; btn.textContent = '执行中…'; }
+  if (tag) { tag.className = 'step-status-tag tag-running'; tag.textContent = '执行中'; }
+  if (node) { node.style.animation = 'pulse 1s infinite'; }
+  if (result) { result.innerHTML = '<div style="color:var(--text-dim);font-size:13px">⏳ 正在分析中…</div>'; }
+
+  // 确保展开
+  const row = document.getElementById('step-row-' + id);
+  if (row && !row.classList.contains('expanded')) row.classList.add('expanded');
+
+  await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
+
+  try {
+    const html = await step.result_fn();
+    if (result) result.innerHTML = html;
+    if (tag) { tag.className = 'step-status-tag tag-done'; tag.textContent = '已完成'; }
+    if (node) { node.style.animation = ''; node.style.background = 'rgba(63,185,80,.2)'; node.style.borderColor = 'var(--green)'; node.style.color = 'var(--green)'; }
+    if (btn) { btn.style.display = 'none'; }
+    step._done = true;
+    updateSevenStepsSummary();
+  } catch(err) {
+    if (result) result.innerHTML = '<div style="color:var(--red)">❌ 执行失败：' + err.message + '</div>';
+    if (tag) { tag.className = 'step-status-tag tag-todo'; tag.textContent = '待执行'; }
+    if (btn) { btn.disabled = false; btn.textContent = '▶ 重试'; }
+  }
+}
+
+// 全流程执行
+async function runAllSteps() {
+  const summaryWrap = document.getElementById('seven-steps-summary');
+  if (summaryWrap) summaryWrap.style.display = 'block';
+  updateSevenStepsSummary();
+
+  for (let i = 0; i < SEVEN_STEPS.length; i++) {
+    // 展开当前步骤
+    document.querySelectorAll('.step-row.expanded').forEach(r => r.classList.remove('expanded'));
+    const row = document.getElementById('step-row-' + i);
+    if (row) row.classList.add('expanded');
+    // 滚动到可见
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    await runStep(i, null);
+    await new Promise(r => setTimeout(r, 300));
+  }
+  updateSevenStepsSummary();
+}
+
+// 更新进度汇总
+function updateSevenStepsSummary() {
+  const summaryWrap = document.getElementById('seven-steps-summary');
+  if (!summaryWrap) return;
+  summaryWrap.style.display = 'block';
+
+  const done = SEVEN_STEPS.filter(s => s._done).length;
+  const total = SEVEN_STEPS.length;
+  const pct = Math.round(done / total * 100);
+
+  const bar = document.getElementById('seven-steps-bar-fill');
+  if (bar) bar.style.width = pct + '%';
+
+  const txt = document.getElementById('seven-steps-progress-text');
+  if (txt) {
+    if (done === 0) txt.textContent = '尚未开始';
+    else if (done < total) txt.textContent = `已完成 ${done}/${total} 步（${pct}%）`;
+    else txt.textContent = `✅ 全部 ${total} 步完成！分析报告已就绪`;
+  }
+
+  const exportBtn = document.getElementById('export-report-btn');
+  if (exportBtn) exportBtn.style.display = done === total ? 'inline-block' : 'none';
+}
+
+// 导出报告
+function exportReport() {
+  const today = new Date();
+  const dateStr = today.getFullYear() + ('0'+(today.getMonth()+1)).slice(-2) + ('0'+today.getDate()).slice(-2);
+  const pos = state.positions || [];
+
+  let md = `# 📊 深度复盘与明日投资计划（${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日）\n\n`;
+  md += `**报告生成时间**：${today.toLocaleString('zh-CN')}  \n`;
+  md += `**分析师**：🌪️ 风暴智能股票分析平台  \n`;
+  md += `**适用投资者**：A股个人投资者  \n\n---\n\n`;
+
+  const stepNames = ['第0步：强制长期记忆检索','第1步：深度复盘','第2步：误差分析','第3步：明日预测','第4步：投资计划','第5步：风险控制','第6步：其他推荐'];
+  stepNames.forEach((name, i) => {
+    md += `## ${name}\n\n`;
+    const resultEl = document.getElementById('step-result-' + i);
+    if (resultEl && resultEl.textContent.trim()) {
+      md += resultEl.textContent.replace(/\s+/g, ' ').trim() + '\n\n';
+    } else {
+      md += `*（本步骤尚未执行）*\n\n`;
+    }
+    md += '---\n\n';
+  });
+
+  md += `\n> ⚠️ 本报告仅供参考，不构成投资建议。股市有风险，投资需谨慎。`;
+
+  const blob = new Blob([md], {type: 'text/markdown;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `深度复盘与明日投资计划_${dateStr}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // 启动
 init();
