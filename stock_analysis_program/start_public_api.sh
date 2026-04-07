@@ -44,15 +44,15 @@ fi
 echo ""
 
 # ---- 2. 选择内网穿透方案 ----
-TUNNEL_OPTIONS=("cloudflare" "ngrok" "localtunnel")
-TUNNEL_NAMES=("Cloudflare Tunnel (推荐·免费)" "ngrok (需要账号)" "localtunnel (无需注册)")
+TUNNEL_OPTIONS=("cloudflare" "cloudflare_named" "ngrok" "localtunnel")
+TUNNEL_NAMES=("Cloudflare Quick Tunnel（临时地址，推荐快速验证）" "Cloudflare Named Tunnel（固定域名，更稳）" "ngrok (需要账号)" "localtunnel (无需注册)")
 
 echo "📡 可用的内网穿透方案："
 for i in "${!TUNNEL_OPTIONS[@]}"; do
     printf "   %d) %s\n" $((i+1)) "${TUNNEL_NAMES[$i]}"
 done
 echo ""
-read -p "请选择方案 [1-3, 默认=1 Cloudflare]: " CHOICE
+read -p "请选择方案 [1-4, 默认=1 Quick Tunnel]: " CHOICE
 CHOICE=${CHOICE:-1}
 
 case $CHOICE in
@@ -60,9 +60,12 @@ case $CHOICE in
         TOOL="cloudflare"
         ;;
     2)
-        TOOL="ngrok"
+        TOOL="cloudflare_named"
         ;;
     3)
+        TOOL="ngrok"
+        ;;
+    4)
         TOOL="localtunnel"
         ;;
     *)
@@ -77,26 +80,93 @@ PUBLIC_URL=""
 
 case $TOOL in
     cloudflare)
-        echo "☁️  启动 Cloudflare Tunnel..."
-        echo "   (首次运行会自动下载 cloudflared)"
+        echo "☁️  启动 Cloudflare Quick Tunnel..."
+        echo "   (首次运行会自动下载 cloudflared；此模式地址是临时的)"
         
         # 使用临时 URL 模式
-        npx cloudflared tunnel --url http://localhost:$BACKEND_PORT 2>&1 | head -30 &
+        nohup npx -y cloudflared tunnel --url http://localhost:$BACKEND_PORT >/tmp/stock_cloudflared_quick.log 2>&1 &
         CF_PID=$!
         
         echo ""
         echo "⏳ 等待隧道建立 (约 5-10 秒)... "
         sleep 8
         
-        # 尝试从输出获取 URL
-        PUBLIC_URL=$(ps aux | grep "cloudflared.*$BACKEND_PORT" | grep -oE 'https://[^ ]+trycloudflare\.com' | head -1 || true)
+        # 从日志中提取 URL
+        PUBLIC_URL=$(python3 - <<'PY'
+import re, pathlib
+path = pathlib.Path('/tmp/stock_cloudflared_quick.log')
+text = path.read_text(errors='ignore') if path.exists() else ''
+m = re.search(r'https://[-a-z0-9]+\.trycloudflare\.com', text)
+print(m.group(0) if m else '')
+PY
+)
         
         if [ -z "$PUBLIC_URL" ]; then
             echo ""
-            echo "📍 请在上方输出中找到类似这样的地址："
+            echo "📍 未自动解析到 Quick Tunnel 地址，请查看 /tmp/stock_cloudflared_quick.log"
+            echo "   其中会有类似这样的地址："
             echo "   https://xxxx-xxx-xxx.trycloudflare.com"
             echo ""
             read -p "👆 手动粘贴该地址: " PUBLIC_URL
+        fi
+        ;;
+
+    cloudflare_named)
+        echo "☁️  启动 Cloudflare Named Tunnel（固定域名模式）..."
+        CF_BIN="cloudflared"
+        if ! command -v cloudflared &>/dev/null; then
+            echo "   ℹ️  本机未安装 cloudflared，改用 npx 临时执行"
+            CF_BIN="npx -y cloudflared"
+        fi
+
+        CF_CONFIG="${HOME}/.cloudflared/config.yml"
+        if [ ! -f "$CF_CONFIG" ] && [ -f "${HOME}/.cloudflared/config.yaml" ]; then
+            CF_CONFIG="${HOME}/.cloudflared/config.yaml"
+        fi
+
+        TUNNEL_NAME="${STOCK_CLOUDFLARE_TUNNEL_NAME:-stock-analysis}"
+        API_HOSTNAME="${STOCK_API_HOSTNAME:-}"
+
+        if [ -z "$API_HOSTNAME" ] && [ -f "$CF_CONFIG" ]; then
+            API_HOSTNAME=$(python3 - "$CF_CONFIG" "$BACKEND_PORT" <<'PY'
+import re, sys, pathlib
+config_path = pathlib.Path(sys.argv[1])
+port = sys.argv[2]
+text = config_path.read_text(errors='ignore')
+pattern = re.compile(r'-\s*hostname:\s*([^\n#]+)\s*\n\s*service:\s*http://(?:127\.0\.0\.1|localhost):' + re.escape(port))
+m = pattern.search(text)
+print(m.group(1).strip() if m else '')
+PY
+)
+        fi
+
+        if [ ! -f "$CF_CONFIG" ]; then
+            echo "❌ 未找到 ~/.cloudflared/config.yml"
+            echo "   固定域名模式需要先完成一次 Cloudflare 登录和命名隧道配置。"
+            echo "   可先执行: cloudflared tunnel login"
+            echo "   然后创建隧道并写好 config.yml 后再重试。"
+            exit 1
+        fi
+
+        if [ -z "$API_HOSTNAME" ]; then
+            echo "❌ 未在 $CF_CONFIG 中找到指向 localhost:$BACKEND_PORT 的 hostname"
+            echo "   可通过环境变量指定，例如:"
+            echo "   export STOCK_API_HOSTNAME=api.stock.example.com"
+            exit 1
+        fi
+
+        echo "   ✅ 使用隧道名: $TUNNEL_NAME"
+        echo "   ✅ 固定域名: https://$API_HOSTNAME"
+
+        nohup bash -lc "$CF_BIN tunnel run '$TUNNEL_NAME'" >/tmp/stock_cloudflared_named.log 2>&1 &
+        CF_NAMED_PID=$!
+        sleep 5
+
+        if kill -0 $CF_NAMED_PID 2>/dev/null; then
+            PUBLIC_URL="https://$API_HOSTNAME"
+        else
+            echo "❌ Named Tunnel 启动失败，请查看 /tmp/stock_cloudflared_named.log"
+            exit 1
         fi
         ;;
     
@@ -164,8 +234,8 @@ if [ -n "$PUBLIC_URL" ]; then
     echo "   编辑 config.js 的 production 字段："
     echo "   production: '$PUBLIC_URL',"
     echo ""
-    echo "   方式 C — 复制到剪贴板直接访问："
-    PAGES_URL="https://yanlongyue.github.io/Intelligent-stock-analysis-platform/real_data_frontend.html"
+    echo "   方式 C — 直接访问线上前端："
+    PAGES_URL="https://yanlongyue.github.io/Intelligent-stock-analysis-platform/stock_analysis_program/real_data_frontend.html"
     echo "   $PAGES_URL?api=$PUBLIC_URL"
     echo ""
     echo "============================================"

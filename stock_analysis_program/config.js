@@ -7,7 +7,7 @@ window.APP_CONFIG = {
         // 生产环境（公网/GitHub Pages）API 地址
         // 填写方式（三选一）：
         //   1) 直接填写：production: 'https://xxxx.ngrok-free.app'
-        //   2) Cloudflare Tunnel：production: 'https://你的域名.trycloudflare.com'
+        //   2) 固定域名（推荐长期使用）：production: 'https://api.stock-analysis.example.com'
         //   3) 留空：通过 URL 参数 ?api=https://xxx 临时指定
         production: 'https://firm-event-rating-five.trycloudflare.com',
         // 是否允许通过 URL 参数 ?api=xxx 覆盖配置
