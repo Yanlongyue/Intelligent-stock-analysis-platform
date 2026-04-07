@@ -495,6 +495,36 @@
   <span class="status-time" id="status-time"></span>
 </div>
 
+<!-- 公网 API 配置提示（仅当未配置时显示） -->
+<div id="api-config-hint" style="display:none;background:linear-gradient(135deg,#1a1f35 0%,#0d1117 100%);border:1px solid #d29922;border-radius:10px;padding:14px 18px;margin:8px 24px 0 24px;font-size:13px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+    <span style="font-size:16px;">🔗</span><strong style="color:#d29922;">连接后端以启用完整功能（持仓 CRUD + 真实数据分析）</strong>
+  </div>
+  <div style="color:#8b949e;line-height:1.7;">
+    当前页面运行在<strong style="color:#c9d1d9;">公网模式</strong>，但未配置后端 API 地址。请选择以下方式之一：
+  </div>
+  <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+    <code style="background:#21262d;padding:6px 12px;border-radius:6px;color:#58a6ff;font-size:12px;border:1px solid #30363d;">
+      ?api=https://你的后端地址
+    </code>
+    <span style="color:#8b949e;align-self:center;">或修改 config.js 的 production 字段</span>
+  </div>
+  <details style="margin-top:8px;color:#8b949e;">
+    <summary style="cursor:pointer;color:#d29922;font-size:12px;">📖 内网穿透工具快速启动命令</summary>
+    <div style="margin-top:6px;padding:8px;background:#161b22;border-radius:6px;font-family:'Menlo','Consolas',monospace;font-size:11.5px;line-height:1.8;">
+      <div><b style="color:#bc8cff;">方案 A - Cloudflare Tunnel（推荐免费）：</b></div>
+      <div style="color:#3fb950;">npx cloudflared tunnel --url http://localhost:9000</div>
+      <div style="margin-top:4px;color:#8b949e;">→ 复制输出的 https://xxx.trycloudflare.com 填入 production 或 ?api= 参数</div>
+      <div style="margin-top:8px;"><b style="color:#bc8cff;">方案 B - ngrok（需要账号）：</b></div>
+      <div style="color:#3fb950;">ngrok http 9000</div>
+      <div style="margin-top:4px;color:#8b949e;">→ 复制输出的 https://xxx.ngrok-free.app 地址</div>
+      <div style="margin-top:8px;"><b style="color:#bc8cff;">方案 C - localtunnel（无需注册）：</b></div>
+      <div style="color:#3fb950;">npx localtunnel --port 9000</div>
+      <div style="margin-top:4px;color:#8b949e;">→ 复制输出的 https://xxx.loca.lt 地址</div>
+    </div>
+  </details>
+</div>
+
 <!-- 分析进度区 -->
 <div class="analysis-progress" id="analysis-progress">
   <div class="progress-title">🧠 正在执行五维算法分析…</div>
@@ -1029,8 +1059,17 @@ async function checkApiStatus() {
   const timeEl = document.getElementById('status-time');
 
   if(!CONFIG.api) {
+    const statusInfo = window.getApiConfigStatus ? window.getApiConfigStatus() : {};
+    const isProdMode = statusInfo.mode === 'production';
     dot.className = 'status-dot mock';
-    txt.textContent = '静态演示模式（未连接后端）';
+    if (isProdMode) {
+      txt.innerHTML = '<span title="' + (statusInfo.currentUrl || '') + '">🌐 公网模式 — 未配置后端 API 地址</span>';
+      // 显示配置提示
+      const hintEl = document.getElementById('api-config-hint');
+      if (hintEl) hintEl.style.display = '';
+    } else {
+      txt.textContent = '静态演示模式（未连接后端）';
+    }
     badge.textContent = '模拟数据';
     badge.className = 'status-badge badge-mock';
     badge.style.display = '';
