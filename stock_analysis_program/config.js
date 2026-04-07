@@ -9,7 +9,7 @@ window.APP_CONFIG = {
         //   1) 直接填写：production: 'https://xxxx.ngrok-free.app'
         //   2) Cloudflare Tunnel：production: 'https://你的域名.trycloudflare.com'
         //   3) 留空：通过 URL 参数 ?api=https://xxx 临时指定
-        production: '',
+        production: 'https://firm-event-rating-five.trycloudflare.com',
         // 是否允许通过 URL 参数 ?api=xxx 覆盖配置
         allowQueryOverride: true,
         // 公网穿透工具配置说明
