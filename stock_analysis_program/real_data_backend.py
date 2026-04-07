@@ -84,7 +84,9 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         """处理 GET 请求"""
-        path = urllib.parse.urlparse(self.path).path
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+        query_params = urllib.parse.parse_qs(parsed_url.query)
 
         if path == "/api/health":
             self.handle_health_check()
@@ -104,6 +106,18 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             self.handle_market_overview()
         elif path == "/api/data_status":
             self.handle_data_status()
+        elif path.startswith("/api/daily_basic/"):
+            stock_code = self._extract_stock_code(path)
+            self.handle_daily_basic(stock_code, query_params)
+        elif path == "/api/moneyflow_hsgt":
+            self.handle_moneyflow_hsgt(query_params)
+        elif path.startswith("/api/index_daily/"):
+            index_code = self._extract_stock_code(path)
+            self.handle_index_daily(index_code, query_params)
+        elif path == "/api/limit_list_d":
+            self.handle_limit_list_d(query_params)
+        elif path == "/api/news":
+            self.handle_news(query_params)
         else:
             self.send_json_response(
                 {
@@ -191,9 +205,10 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
         data = {
             "status": "healthy",
             "service": "Real Data Stock Analysis API",
-            "version": "1.1.0",
+            "version": "1.2.0",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "data_provider": "Tushare Pro" if self._is_real_data_ready() else "Mock Data",
+            "data_provider": self._get_data_source(),
+            "active_provider": self._get_active_provider_name(),
             "data_status": self._get_data_status(),
         }
         self.send_json_response(data)
@@ -540,60 +555,95 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
         try:
             indices = ["000001.SH", "399001.SZ", "399006.SZ"]
             index_data = []
+            
+            # 使用真实指数数据（含涨跌幅）
             for idx in indices:
                 try:
+                    # 尝试获取真实指数日线数据
+                    if hasattr(self.data_provider, "get_index_daily"):
+                        index_daily = self.data_provider.get_index_daily(idx)
+                        if index_daily and len(index_daily) > 0:
+                            latest = index_daily[-1]
+                            index_data.append({
+                                "code": idx,
+                                "name": self._get_index_name(idx),
+                                "price": float(latest.get("close", 0)),
+                                "change": float(latest.get("pct_chg", 0))
+                            })
+                            continue
+                    
+                    # 回退到价格获取
                     price = self._get_current_price(idx)
-                    index_data.append(
-                        {
-                            "code": idx,
-                            "name": self._get_index_name(idx),
-                            "price": price,
-                            "change": random.uniform(-2, 2),
-                        }
-                    )
+                    index_data.append({
+                        "code": idx,
+                        "name": self._get_index_name(idx),
+                        "price": price,
+                        "change": 0.0  # 无法获取涨跌幅时默认为0
+                    })
                 except Exception:
                     continue
 
+            # 获取龙虎榜数据
             if hasattr(self.data_provider, "get_top_list_data"):
                 toplist = self.data_provider.get_top_list_data()
                 market_hot = len(toplist) if toplist else 0
             else:
-                market_hot = random.randint(5, 20)
+                market_hot = 0
 
-            rise_count = random.randint(800, 1200)
-            fall_count = random.randint(500, 800)
-            flat_count = random.randint(100, 300)
+            # 获取北向资金真实数据
+            northbound_inflow = 0.0
+            if hasattr(self.data_provider, "get_moneyflow_hsgt"):
+                try:
+                    hsgt_data = self.data_provider.get_moneyflow_hsgt()
+                    if hsgt_data and len(hsgt_data) > 0:
+                        # 取最新一天的数据，兼容 Tushare / AkShare 字段差异
+                        latest_hsgt = hsgt_data[0]
+                        northbound_inflow = float(latest_hsgt.get("north_money") or latest_hsgt.get("net_amount") or 0)
+                except Exception:
+                    pass
 
-            self.send_json_response(
-                {
-                    "indices": index_data,
-                    "market_sentiment": {
-                        "hot_stocks": market_hot,
-                        "rise_count": rise_count,
-                        "fall_count": fall_count,
-                        "flat_count": flat_count,
-                        "total_stocks": rise_count + fall_count + flat_count,
-                        "rise_ratio": round(rise_count / (rise_count + fall_count + flat_count) * 100, 1),
-                    },
-                    "trading_info": {
-                        "total_volume": random.uniform(500, 800) * 100000000,
-                        "total_amount": random.uniform(800, 1200) * 1000000000,
-                        "northbound_inflow": random.uniform(-50, 100),
-                        "southbound_inflow": random.uniform(-20, 50),
-                    },
-                    "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "data_source": self._get_data_source(),
-                }
-            )
-        except Exception as exc:
-            self.send_json_response(
-                {
-                    "error": "获取市场概况失败",
-                    "message": str(exc),
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            # 涨跌家数暂时使用默认值（需要更高级别的Tushare权限才能获取）
+            rise_count = 0
+            fall_count = 0
+            flat_count = 0
+
+            # 成交额数据
+            total_volume = 0.0
+            total_amount = 0.0
+            if hasattr(self.data_provider, "get_market_overview"):
+                try:
+                    market_data = self.data_provider.get_market_overview()
+                    if market_data:
+                        # 这里可以根据实际返回的数据结构调整
+                        pass
+                except Exception:
+                    pass
+
+            self.send_json_response({
+                "indices": index_data,
+                "market_sentiment": {
+                    "hot_stocks": market_hot,
+                    "rise_count": rise_count,
+                    "fall_count": fall_count,
+                    "flat_count": flat_count,
+                    "total_stocks": rise_count + fall_count + flat_count,
+                    "rise_ratio": 0.0 if (rise_count + fall_count + flat_count) == 0 else round(rise_count / (rise_count + fall_count + flat_count) * 100, 1),
                 },
-                500,
-            )
+                "trading_info": {
+                    "total_volume": total_volume,
+                    "total_amount": total_amount,
+                    "northbound_inflow": northbound_inflow,
+                    "southbound_inflow": 0.0,  # 暂无数据源
+                },
+                "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "data_source": self._get_data_source(),
+            })
+        except Exception as exc:
+            self.send_json_response({
+                "error": "获取市场概况失败",
+                "message": str(exc),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }, 500)
 
     def handle_data_status(self):
         """获取数据状态"""
@@ -604,9 +654,113 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                 "use_real_data": self.use_real_data,
                 "cache_size": len(self.price_cache),
                 "positions_count": len(self.positions),
+                "data_source": self._get_data_source(),
+                "active_provider": self._get_active_provider_name(),
                 "server_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
         )
+
+    def handle_daily_basic(self, stock_code, query_params=None):
+        """获取股票每日基础指标"""
+        try:
+            trade_date = self._get_query_value(query_params, "trade_date")
+            data = self.data_provider.get_daily_basic(stock_code, trade_date) if hasattr(self.data_provider, "get_daily_basic") else None
+            self.send_json_response({
+                "stock_code": stock_code,
+                "trade_date": trade_date,
+                "data": data,
+                "data_source": self._get_data_source(),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+        except Exception as exc:
+            self.send_json_response({
+                "error": "获取 daily_basic 失败",
+                "message": str(exc),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }, 500)
+
+    def handle_moneyflow_hsgt(self, query_params=None):
+        """获取北向资金数据"""
+        try:
+            start_date = self._get_query_value(query_params, "start_date")
+            end_date = self._get_query_value(query_params, "end_date")
+            data = self.data_provider.get_moneyflow_hsgt(start_date, end_date) if hasattr(self.data_provider, "get_moneyflow_hsgt") else None
+            self.send_json_response({
+                "start_date": start_date,
+                "end_date": end_date,
+                "data": data or [],
+                "data_source": self._get_data_source(),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+        except Exception as exc:
+            self.send_json_response({
+                "error": "获取 moneyflow_hsgt 失败",
+                "message": str(exc),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }, 500)
+
+    def handle_index_daily(self, index_code, query_params=None):
+        """获取指数日线数据"""
+        try:
+            start_date = self._get_query_value(query_params, "start_date")
+            end_date = self._get_query_value(query_params, "end_date")
+            data = self.data_provider.get_index_daily(index_code, start_date, end_date) if hasattr(self.data_provider, "get_index_daily") else None
+            self.send_json_response({
+                "index_code": index_code,
+                "start_date": start_date,
+                "end_date": end_date,
+                "data": data or [],
+                "data_source": self._get_data_source(),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+        except Exception as exc:
+            self.send_json_response({
+                "error": "获取 index_daily 失败",
+                "message": str(exc),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }, 500)
+
+    def handle_limit_list_d(self, query_params=None):
+        """获取涨跌停列表"""
+        try:
+            trade_date = self._get_query_value(query_params, "trade_date")
+            limit_type = self._get_query_value(query_params, "limit_type", "U")
+            data = self.data_provider.get_limit_list_d(trade_date, limit_type) if hasattr(self.data_provider, "get_limit_list_d") else None
+            self.send_json_response({
+                "trade_date": trade_date,
+                "limit_type": limit_type,
+                "data": data or [],
+                "data_source": self._get_data_source(),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+        except Exception as exc:
+            self.send_json_response({
+                "error": "获取 limit_list_d 失败",
+                "message": str(exc),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }, 500)
+
+    def handle_news(self, query_params=None):
+        """获取新闻快讯"""
+        try:
+            src = self._get_query_value(query_params, "src")
+            start_date = self._get_query_value(query_params, "start_date")
+            end_date = self._get_query_value(query_params, "end_date")
+            data = self.data_provider.get_news(src, start_date, end_date) if hasattr(self.data_provider, "get_news") else None
+            self.send_json_response({
+                "src": src,
+                "start_date": start_date,
+                "end_date": end_date,
+                "data": data or [],
+                "data_source": self._get_data_source(),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+        except Exception as exc:
+            self.send_json_response({
+                "error": "获取 news 失败",
+                "message": str(exc),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }, 500)
 
     def _ensure_position_store(self):
         """确保持仓存储已初始化"""
@@ -672,8 +826,29 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
         """从路径中提取股票代码"""
         return self._normalize_stock_code(urllib.parse.unquote(path.rstrip("/").split("/")[-1]))
 
+    def _get_query_value(self, query_params, key, default=None):
+        """获取查询参数中的单个值"""
+        if not query_params or key not in query_params:
+            return default
+        value = query_params.get(key)
+        if isinstance(value, list):
+            return value[0] if value else default
+        return value or default
+
     def _normalize_stock_code(self, code):
-        return str(code or "").strip().upper()
+        code = str(code or "").strip().upper()
+        if not code:
+            return code
+        if "." in code:
+            return code
+        if len(code) == 6 and code.isdigit():
+            if code.startswith(("5", "6", "9")):
+                return f"{code}.SH"
+            if code.startswith(("0", "1", "2", "3")):
+                return f"{code}.SZ"
+            if code.startswith(("4", "8")):
+                return f"{code}.BJ"
+        return code
 
     def _normalize_position_record(self, data):
         """标准化持仓记录"""
@@ -720,7 +895,19 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
 
     def _is_real_data_ready(self):
         """真实数据是否可用"""
-        return bool(self.use_real_data and self.tushare_token)
+        if not self.use_real_data:
+            return False
+        if hasattr(self.data_provider, "has_real_source"):
+            try:
+                return bool(self.data_provider.has_real_source())
+            except Exception:
+                return False
+        provider_type = type(self.data_provider).__name__
+        if provider_type == "RealDataProvider":
+            return bool(self.tushare_token)
+        if provider_type == "AkShareDataProvider":
+            return True
+        return False
 
     def _get_current_price(self, stock_code, force_update=False):
         """获取当前价格（带缓存）"""
@@ -810,10 +997,19 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             return "real_data_disabled_no_token"
         return "mock_data_active"
 
+    def _get_active_provider_name(self):
+        """获取最近一次成功使用的数据源名称"""
+        return getattr(self.data_provider, "last_successful_provider", None) or "Mock"
+
     def _get_data_source(self):
         """获取数据源信息"""
+        if hasattr(self.data_provider, "get_data_source_label"):
+            try:
+                return self.data_provider.get_data_source_label()
+            except Exception:
+                pass
         if self._is_real_data_ready():
-            return "Tushare Pro API (真实数据)"
+            return "真实数据"
         return "模拟数据 / 本地持仓文件"
 
     def log_message(self, format, *args):
@@ -845,6 +1041,11 @@ def start_real_data_backend(port=9000):
     print("  GET    /api/update_prices        - 更新价格缓存")
     print("  GET    /api/market_overview      - 获取市场概况")
     print("  GET    /api/data_status          - 获取数据状态")
+    print("  GET    /api/daily_basic/<code>   - 获取每日基本面指标")
+    print("  GET    /api/moneyflow_hsgt       - 获取北向资金流向")
+    print("  GET    /api/index_daily/<code>   - 获取指数日线")
+    print("  GET    /api/limit_list_d         - 获取涨跌停列表")
+    print("  GET    /api/news                 - 获取新闻快讯")
     print("\n🔄 服务运行中，按 Ctrl+C 停止...")
 
     try:

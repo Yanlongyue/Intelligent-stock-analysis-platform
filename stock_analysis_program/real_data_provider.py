@@ -36,6 +36,32 @@ class RealDataProvider:
             {"code": "600821.SH", "name": "金开新能"}
         ]
     
+    def _candidate_financial_periods(self, limit=8):
+        """生成最近若干个财报期候选值（按新到旧）"""
+        today = datetime.now()
+        quarter_ends = [(12, 31), (9, 30), (6, 30), (3, 31)]
+        periods = []
+        year = today.year
+        
+        while len(periods) < limit:
+            for month, day in quarter_ends:
+                period = f"{year}{month:02d}{day:02d}"
+                if period <= today.strftime("%Y%m%d"):
+                    periods.append(period)
+                    if len(periods) >= limit:
+                        break
+            year -= 1
+        
+        return periods
+    
+    def has_real_source(self):
+        """Tushare 是否已配置"""
+        return bool(self.tushare_token)
+    
+    def get_data_source_label(self):
+        """获取数据源标签"""
+        return "Tushare Pro API（真实数据）"
+    
     def call_tushare_api(self, api_name, params=None, fields=None):
         """
         调用Tushare Pro API
@@ -149,62 +175,72 @@ class RealDataProvider:
         
         return []
     
-    def get_financial_indicators(self, ts_code):
+    def get_financial_indicators(self, ts_code, period=None):
         """
         获取财务指标数据
         
         Args:
             ts_code: 股票代码
+            period: 财报期（可选，YYYYMMDD）
             
         Returns:
             财务指标数据
         """
-        cache_key = f"fina_{ts_code}"
-        if self._get_from_cache(cache_key):
-            return self._get_from_cache(cache_key)
+        cache_key = f"fina_{ts_code}_{period or 'latest'}"
+        cached = self._get_from_cache(cache_key)
+        if cached:
+            return cached
         
-        # 获取最新的财务指标
-        data = self.call_tushare_api(
-            "fina_indicator",
-            params={
-                "ts_code": ts_code,
-                "period": "20231231",  # 最新年报
-                "type": "P"
-            },
-            fields="roe,gpr,npr,dt_ratio,total_revenue_ps,profit_dedt,eps_basic,or_yoy,q_profit_yoy"
-        )
+        candidate_periods = [period] if period else self._candidate_financial_periods()
         
-        if data and data.get("items"):
-            result = self._format_financial_data(data["items"][0], data["fields"])
-            self._save_to_cache(cache_key, result)
-            return result
+        for target_period in candidate_periods:
+            data = self.call_tushare_api(
+                "fina_indicator",
+                params={
+                    "ts_code": ts_code,
+                    "period": target_period,
+                    "type": "P"
+                },
+                fields="end_date,roe,gpr,npr,dt_ratio,total_revenue_ps,profit_dedt,eps_basic,or_yoy,q_profit_yoy"
+            )
+            
+            if data and data.get("items"):
+                result = self._format_financial_data(data["items"][0], data["fields"])
+                self._save_to_cache(cache_key, result)
+                return result
         
         return None
     
-    def get_moneyflow_data(self, ts_code):
+    def get_moneyflow_data(self, ts_code, start_date=None, end_date=None):
         """
         获取资金流向数据
         
         Args:
             ts_code: 股票代码
+            start_date: 开始日期（可选）
+            end_date: 结束日期（可选）
             
         Returns:
             资金流向数据
         """
-        cache_key = f"moneyflow_{ts_code}"
-        if self._get_from_cache(cache_key):
-            return self._get_from_cache(cache_key)
+        if not end_date:
+            end_date = datetime.now().strftime("%Y%m%d")
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=10)).strftime("%Y%m%d")
         
-        # 获取最近一天的资金流向
-        today = datetime.now().strftime("%Y%m%d")
+        cache_key = f"moneyflow_{ts_code}_{start_date}_{end_date}"
+        cached = self._get_from_cache(cache_key)
+        if cached:
+            return cached
+        
         data = self.call_tushare_api(
             "moneyflow",
             params={
                 "ts_code": ts_code,
-                "start_date": today,
-                "end_date": today
+                "start_date": start_date,
+                "end_date": end_date
             },
-            fields="buy_sm_vol,buy_sm_amount,sell_sm_vol,sell_sm_amount,buy_md_vol,buy_md_amount,sell_md_vol,sell_md_amount,buy_lg_vol,buy_lg_amount,sell_lg_vol,sell_lg_amount,buy_elg_vol,buy_elg_amount,sell_elg_vol,sell_elg_amount,net_mf_vol,net_mf_amount"
+            fields="trade_date,buy_sm_vol,buy_sm_amount,sell_sm_vol,sell_sm_amount,buy_md_vol,buy_md_amount,sell_md_vol,sell_md_amount,buy_lg_vol,buy_lg_amount,sell_lg_vol,sell_lg_amount,buy_elg_vol,buy_elg_amount,sell_elg_vol,sell_elg_amount,net_mf_vol,net_mf_amount"
         )
         
         if data and data.get("items"):
@@ -430,6 +466,689 @@ class RealDataProvider:
         }
 
 
+class AkShareDataProvider:
+    """
+    AkShare备用数据提供者
+    当Tushare不可用时使用AkShare作为备用数据源
+    """
+    
+    def __init__(self):
+        """初始化AkShare数据提供者"""
+        try:
+            import akshare as ak
+            self.ak = ak
+            self.available = True
+            print("✅ AkShare备用数据源初始化成功")
+        except ImportError:
+            self.ak = None
+            self.available = False
+            print("⚠️ AkShare未安装，备用数据源不可用")
+        
+        # 缓存机制
+        self.cache = {}
+        self.cache_ttl = 300  # 5分钟缓存
+    
+    def has_real_source(self):
+        """AkShare 是否可用"""
+        return bool(self.available)
+    
+    def get_data_source_label(self):
+        """获取数据源标签"""
+        return "AkShare（真实数据备用源）"
+    
+    def _save_to_cache(self, key, data):
+        """保存数据到缓存"""
+        self.cache[key] = {
+            "data": data,
+            "timestamp": time.time()
+        }
+    
+    def _get_from_cache(self, key):
+        """从缓存获取数据"""
+        if key in self.cache:
+            cache_entry = self.cache[key]
+            if time.time() - cache_entry["timestamp"] < self.cache_ttl:
+                return cache_entry["data"]
+            else:
+                del self.cache[key]
+        return None
+    
+    def _normalize_code(self, ts_code):
+        """
+        将带交易所后缀的代码转换为AkShare格式
+        如: 601868.SH -> 601868, 002506.SZ -> 002506
+        """
+        if '.' in ts_code:
+            return ts_code.split('.')[0]
+        return ts_code
+    
+    def get_daily_quotes(self, ts_code, start_date=None, end_date=None):
+        """
+        获取日线行情数据
+        
+        Args:
+            ts_code: 股票代码（带或不带交易所后缀）
+            start_date: 开始日期 (YYYYMMDD)
+            end_date: 结束日期 (YYYYMMDD)
+            
+        Returns:
+            日线数据列表
+        """
+        if not self.available:
+            return None
+        
+        cache_key = f"daily_{ts_code}_{start_date}_{end_date}"
+        if self._get_from_cache(cache_key):
+            return self._get_from_cache(cache_key)
+        
+        try:
+            code = self._normalize_code(ts_code)
+            
+            # AkShare接口: stock_zh_a_hist
+            df = self.ak.stock_zh_a_hist(
+                symbol=code,
+                period="daily",
+                start_date=start_date or (datetime.now() - timedelta(days=30)).strftime("%Y%m%d"),
+                end_date=end_date or datetime.now().strftime("%Y%m%d"),
+                adjust=""  # 不复权
+            )
+            
+            if df is None or df.empty:
+                return None
+            
+            # 转换为统一格式
+            result = []
+            for _, row in df.iterrows():
+                result.append({
+                    "trade_date": row.get("日期", ""),
+                    "open": float(row.get("开盘", 0)),
+                    "high": float(row.get("最高", 0)),
+                    "low": float(row.get("最低", 0)),
+                    "close": float(row.get("收盘", 0)),
+                    "vol": float(row.get("成交量", 0)),
+                    "amount": float(row.get("成交额", 0)),
+                    "pct_chg": float(row.get("涨跌幅", 0))
+                })
+            
+            self._save_to_cache(cache_key, result)
+            return result
+            
+        except Exception as e:
+            print(f"AkShare获取日线数据失败 {ts_code}: {e}")
+            return None
+    
+    def get_index_daily(self, ts_code, start_date=None, end_date=None):
+        """
+        获取指数日线数据
+        
+        Args:
+            ts_code: 指数代码（如 000001.SH）
+            start_date: 开始日期
+            end_date: 结束日期
+            
+        Returns:
+            指数日线数据
+        """
+        if not self.available:
+            return None
+        
+        cache_key = f"index_{ts_code}_{start_date}_{end_date}"
+        if self._get_from_cache(cache_key):
+            return self._get_from_cache(cache_key)
+        
+        try:
+            code = self._normalize_code(ts_code)
+            
+            # AkShare接口: index_zh_a_hist
+            df = self.ak.index_zh_a_hist(
+                symbol=code,
+                period="daily",
+                start_date=start_date or (datetime.now() - timedelta(days=30)).strftime("%Y%m%d"),
+                end_date=end_date or datetime.now().strftime("%Y%m%d")
+            )
+            
+            if df is None or df.empty:
+                return None
+            
+            result = []
+            for _, row in df.iterrows():
+                result.append({
+                    "trade_date": row.get("日期", ""),
+                    "close": float(row.get("收盘", 0)),
+                    "pct_chg": float(row.get("涨跌幅", 0))
+                })
+            
+            self._save_to_cache(cache_key, result)
+            return result
+            
+        except Exception as e:
+            print(f"AkShare获取指数数据失败 {ts_code}: {e}")
+            return None
+    
+    def get_north_money_flow(self, start_date=None, end_date=None):
+        """
+        获取北向资金流向数据
+        
+        Args:
+            start_date: 开始日期
+            end_date: 结束日期
+            
+        Returns:
+            北向资金流向数据
+        """
+        if not self.available:
+            return None
+        
+        cache_key = f"north_money_{start_date}_{end_date}"
+        if self._get_from_cache(cache_key):
+            return self._get_from_cache(cache_key)
+        
+        try:
+            # AkShare接口: stock_hsgt_north_net_flow_in_em
+            df = self.ak.stock_hsgt_north_net_flow_in_em(
+                symbol="北向资金"
+            )
+            
+            if df is None or df.empty:
+                return None
+            
+            # 返回最新一天的数据
+            latest = df.iloc[0] if len(df) > 0 else None
+            if latest is not None:
+                result = {
+                    "trade_date": latest.get("日期", ""),
+                    "net_amount": float(latest.get("当日净流入", 0)),
+                    "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                self._save_to_cache(cache_key, result)
+                return result
+            
+            return None
+            
+        except Exception as e:
+            print(f"AkShare获取北向资金失败: {e}")
+            return None
+    
+    def get_limit_list(self, trade_date=None):
+        """
+        获取涨跌停股票列表
+        
+        Args:
+            trade_date: 交易日期 (YYYYMMDD)
+            
+        Returns:
+            涨跌停股票列表
+        """
+        if not self.available:
+            return None
+        
+        if not trade_date:
+            trade_date = datetime.now().strftime("%Y%m%d")
+        
+        cache_key = f"limit_list_{trade_date}"
+        if self._get_from_cache(cache_key):
+            return self._get_from_cache(cache_key)
+        
+        try:
+            # AkShare接口: stock_zt_pool_em (涨停池)
+            df = self.ak.stock_zt_pool_em(date=trade_date)
+            
+            if df is None or df.empty:
+                return []
+            
+            result = []
+            for _, row in df.iterrows():
+                result.append({
+                    "ts_code": row.get("代码", ""),
+                    "name": row.get("名称", ""),
+                    "p_change": float(row.get("涨跌幅", 0)),
+                    "amount": float(row.get("成交额", 0)),
+                    "reason": row.get("涨停原因类别", "")
+                })
+            
+            self._save_to_cache(cache_key, result)
+            return result
+            
+        except Exception as e:
+            print(f"AkShare获取涨停列表失败: {e}")
+            return None
+    
+    def get_stock_news(self, symbol=None):
+        """
+        获取股票新闻数据
+        
+        Args:
+            symbol: 股票代码（可选）
+            
+        Returns:
+            新闻列表
+        """
+        if not self.available:
+            return None
+        
+        cache_key = f"news_{symbol or 'all'}"
+        if self._get_from_cache(cache_key):
+            return self._get_from_cache(cache_key)
+        
+        try:
+            # AkShare接口: stock_news_em
+            df = self.ak.stock_news_em(symbol=symbol or "财经新闻")
+            
+            if df is None or df.empty:
+                return []
+            
+            result = []
+            for _, row in df.head(20).iterrows():  # 只取最新20条
+                result.append({
+                    "title": row.get("新闻标题", ""),
+                    "content": row.get("新闻内容", ""),
+                    "time": row.get("发布时间", ""),
+                    "source": row.get("新闻来源", "")
+                })
+            
+            self._save_to_cache(cache_key, result)
+            return result
+            
+        except Exception as e:
+            print(f"AkShare获取新闻失败: {e}")
+            return None
+    
+    def get_stock_realtime_price(self, ts_code):
+        """获取实时价格（通过最新日线数据）"""
+        daily_data = self.get_daily_quotes(ts_code, start_date=None, end_date=None)
+        if daily_data and len(daily_data) > 0:
+            latest = daily_data[-1]
+            return latest.get("close")
+        return None
+
+
+class FallbackDataProvider:
+    """
+    链式回退数据提供者
+    按优先级依次尝试: Tushare -> AkShare -> Mock数据
+    """
+    
+    def __init__(self, tushare_token=None):
+        """
+        初始化链式回退数据提供者
+        
+        Args:
+            tushare_token: Tushare API token
+        """
+        self.providers = []
+        self.provider_names = []
+        self.real_provider_names = []
+        self.last_successful_provider = "Mock"
+        self.last_successful_method = None
+        
+        # 第一层: Tushare（主数据源）
+        if tushare_token:
+            try:
+                tushare_provider = RealDataProvider(tushare_token)
+                self.providers.append(tushare_provider)
+                self.provider_names.append("Tushare")
+                self.real_provider_names.append("Tushare")
+                print("✅ 第一层数据源（Tushare）就绪")
+            except Exception as e:
+                print(f"⚠️ Tushare初始化失败: {e}")
+        
+        # 第二层: AkShare（备用数据源）
+        try:
+            akshare_provider = AkShareDataProvider()
+            if akshare_provider.available:
+                self.providers.append(akshare_provider)
+                self.provider_names.append("AkShare")
+                self.real_provider_names.append("AkShare")
+                print("✅ 第二层数据源（AkShare）就绪")
+        except Exception as e:
+            print(f"⚠️ AkShare初始化失败: {e}")
+        
+        # 第三层: Mock数据（最终回退）
+        self.mock_provider = MockDataProvider()
+        self.providers.append(self.mock_provider)
+        self.provider_names.append("Mock")
+        print("✅ 第三层数据源（Mock）就绪")
+        
+        print(f"📋 数据源优先级: {' -> '.join(self.provider_names)}")
+    
+    def has_real_source(self):
+        """是否存在至少一个真实数据源"""
+        return len(self.real_provider_names) > 0
+    
+    def get_data_source_label(self):
+        """获取当前数据源描述"""
+        current = self.last_successful_provider or (self.real_provider_names[0] if self.real_provider_names else "Mock")
+        return f"{current}（优先链路: {' -> '.join(self.provider_names)}）"
+    
+    def _mark_success(self, provider_name, method_name):
+        """记录最近一次成功使用的数据源"""
+        self.last_successful_provider = provider_name
+        self.last_successful_method = method_name
+    
+    def _try_providers(self, method_name, *args, **kwargs):
+        """
+        依次尝试各数据提供者的指定方法
+        
+        Args:
+            method_name: 方法名
+            *args, **kwargs: 方法参数
+            
+        Returns:
+            第一个成功的数据提供者的结果
+        """
+        for i, provider in enumerate(self.providers):
+            try:
+                method = getattr(provider, method_name, None)
+                if method and callable(method):
+                    result = method(*args, **kwargs)
+                    if result is not None and result != [] and result != {}:
+                        self.last_successful_provider = self.provider_names[i]
+                        self.last_successful_method = method_name
+                        print(f"✅ [{method_name}] 使用数据源: {self.provider_names[i]}")
+                        return result
+            except Exception as e:
+                print(f"⚠️ [{method_name}] {self.provider_names[i]} 失败: {e}")
+                continue
+        
+        print(f"❌ [{method_name}] 所有数据源均失败")
+        return None
+    
+    # 统一接口方法
+    def get_stock_basic_info(self, ts_code):
+        """获取股票基本信息"""
+        return self._try_providers("get_stock_basic_info", ts_code)
+    
+    def get_daily_quotes(self, ts_code, start_date=None, end_date=None):
+        """获取日线行情"""
+        return self._try_providers("get_daily_quotes", ts_code, start_date, end_date)
+    
+    def get_financial_indicators(self, ts_code, period=None):
+        """获取财务指标"""
+        return self._try_providers("get_financial_indicators", ts_code, period)
+    
+    def get_moneyflow_data(self, ts_code, start_date=None, end_date=None):
+        """获取资金流向"""
+        return self._try_providers("get_moneyflow_data", ts_code, start_date, end_date)
+    
+    def get_top_list_data(self, trade_date=None):
+        """获取龙虎榜数据"""
+        return self._try_providers("get_top_list_data", trade_date)
+    
+    def get_stock_realtime_price(self, ts_code):
+        """获取实时价格"""
+        return self._try_providers("get_stock_realtime_price", ts_code)
+    
+    def get_all_holdings_data(self):
+        """获取所有持仓数据"""
+        return self._try_providers("get_all_holdings_data")
+    
+    def get_market_overview(self):
+        """获取市场概况"""
+        return self._try_providers("get_market_overview")
+    
+    # 新增五个高价值数据能力
+    def get_daily_basic(self, ts_code, trade_date=None):
+        """
+        获取每日基本面指标（PE/换手率/市净率等）
+        
+        Args:
+            ts_code: 股票代码
+            trade_date: 交易日期
+            
+        Returns:
+            每日基本面指标数据
+        """
+        if not trade_date:
+            trade_date = datetime.now().strftime("%Y%m%d")
+        
+        # 尝试从Tushare获取
+        if self.providers and isinstance(self.providers[0], RealDataProvider):
+            try:
+                data = self.providers[0].call_tushare_api(
+                    "daily_basic",
+                    params={
+                        "ts_code": ts_code,
+                        "trade_date": trade_date
+                    },
+                    fields="ts_code,trade_date,close,turnover_rate,turnover_rate_f,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,dv_ratio,dv_ttm,total_mv,circ_mv"
+                )
+                
+                if data and data.get("items"):
+                    result = {}
+                    fields = data["fields"]
+                    item = data["items"][0]
+                    for i, field in enumerate(fields):
+                        if i < len(item):
+                            result[field] = item[i]
+                    self._mark_success("Tushare", "daily_basic")
+                    print(f"✅ [daily_basic] 使用数据源: Tushare")
+                    return result
+            except Exception as e:
+                print(f"⚠️ [daily_basic] Tushare失败: {e}")
+        
+        # 回退到AkShare或Mock
+        print(f"⚠️ [daily_basic] Tushare不可用，尝试备用数据源")
+        # AkShare没有直接的daily_basic接口，这里返回None让回退机制继续
+        return None
+    
+    def get_moneyflow_hsgt(self, start_date=None, end_date=None):
+        """
+        获取北向资金真实流向
+        
+        Args:
+            start_date: 开始日期
+            end_date: 结束日期
+            
+        Returns:
+            北向资金流向数据
+        """
+        # 尝试从Tushare获取
+        if self.providers and isinstance(self.providers[0], RealDataProvider):
+            try:
+                if not start_date:
+                    start_date = (datetime.now() - timedelta(days=30)).strftime("%Y%m%d")
+                if not end_date:
+                    end_date = datetime.now().strftime("%Y%m%d")
+                
+                data = self.providers[0].call_tushare_api(
+                    "moneyflow_hsgt",
+                    params={
+                        "start_date": start_date,
+                        "end_date": end_date
+                    },
+                    fields="trade_date,ggt_ss,ggt_sz,hgt,sgt,north_money,south_money"
+                )
+                
+                if data and data.get("items"):
+                    result = []
+                    fields = data["fields"]
+                    for item in data["items"]:
+                        item_data = {}
+                        for i, field in enumerate(fields):
+                            if i < len(item):
+                                item_data[field] = item[i]
+                        result.append(item_data)
+                    self._mark_success("Tushare", "moneyflow_hsgt")
+                    print(f"✅ [moneyflow_hsgt] 使用数据源: Tushare")
+                    return result
+            except Exception as e:
+                print(f"⚠️ [moneyflow_hsgt] Tushare失败: {e}")
+        
+        # 回退到AkShare
+        for provider in self.providers:
+            if isinstance(provider, AkShareDataProvider):
+                result = provider.get_north_money_flow(start_date, end_date)
+                if result:
+                    self._mark_success("AkShare", "moneyflow_hsgt")
+                    print(f"✅ [moneyflow_hsgt] 使用数据源: AkShare")
+                    return [result] if isinstance(result, dict) else result
+        
+        return None
+    
+    def get_index_daily(self, ts_code, start_date=None, end_date=None):
+        """
+        获取指数日线数据（含涨跌幅）
+        
+        Args:
+            ts_code: 指数代码
+            start_date: 开始日期
+            end_date: 结束日期
+            
+        Returns:
+            指数日线数据
+        """
+        # 尝试从Tushare获取
+        if self.providers and isinstance(self.providers[0], RealDataProvider):
+            try:
+                if not start_date:
+                    start_date = (datetime.now() - timedelta(days=30)).strftime("%Y%m%d")
+                if not end_date:
+                    end_date = datetime.now().strftime("%Y%m%d")
+                
+                data = self.providers[0].call_tushare_api(
+                    "index_daily",
+                    params={
+                        "ts_code": ts_code,
+                        "start_date": start_date,
+                        "end_date": end_date
+                    },
+                    fields="ts_code,trade_date,close,open,high,low,pre_close,change,pct_chg,vol,amount"
+                )
+                
+                if data and data.get("items"):
+                    result = []
+                    fields = data["fields"]
+                    for item in data["items"]:
+                        item_data = {}
+                        for i, field in enumerate(fields):
+                            if i < len(item):
+                                item_data[field] = item[i]
+                        result.append(item_data)
+                    self._mark_success("Tushare", "index_daily")
+                    print(f"✅ [index_daily] 使用数据源: Tushare")
+                    return result
+            except Exception as e:
+                print(f"⚠️ [index_daily] Tushare失败: {e}")
+        
+        # 回退到AkShare
+        for provider in self.providers:
+            if isinstance(provider, AkShareDataProvider):
+                result = provider.get_index_daily(ts_code, start_date, end_date)
+                if result:
+                    self._mark_success("AkShare", "index_daily")
+                    print(f"✅ [index_daily] 使用数据源: AkShare")
+                    return result
+        
+        return None
+    
+    def get_limit_list_d(self, trade_date=None, limit_type="U"):
+        """
+        获取涨跌停真实数据
+        
+        Args:
+            trade_date: 交易日期
+            limit_type: U-涨停, D-跌停
+            
+        Returns:
+            涨跌停股票列表
+        """
+        if not trade_date:
+            trade_date = datetime.now().strftime("%Y%m%d")
+        
+        # 尝试从Tushare获取
+        if self.providers and isinstance(self.providers[0], RealDataProvider):
+            try:
+                data = self.providers[0].call_tushare_api(
+                    "limit_list_d",
+                    params={
+                        "trade_date": trade_date,
+                        "limit_type": limit_type
+                    },
+                    fields="ts_code,name,close,pct_chg,turnover_rate,amount,limit_amount,fd_amount,first_time,last_time,limit_times,up_stat,up_stat_times"
+                )
+                
+                if data and data.get("items"):
+                    result = []
+                    fields = data["fields"]
+                    for item in data["items"]:
+                        item_data = {}
+                        for i, field in enumerate(fields):
+                            if i < len(item):
+                                item_data[field] = item[i]
+                        result.append(item_data)
+                    self._mark_success("Tushare", "limit_list_d")
+                    print(f"✅ [limit_list_d] 使用数据源: Tushare")
+                    return result
+            except Exception as e:
+                print(f"⚠️ [limit_list_d] Tushare失败: {e}")
+        
+        # 回退到AkShare
+        for provider in self.providers:
+            if isinstance(provider, AkShareDataProvider):
+                result = provider.get_limit_list(trade_date)
+                if result:
+                    self._mark_success("AkShare", "limit_list_d")
+                    print(f"✅ [limit_list_d] 使用数据源: AkShare")
+                    return result
+        
+        return None
+    
+    def get_news(self, src=None, start_date=None, end_date=None):
+        """
+        获取新闻快讯数据
+        
+        Args:
+            src: 新闻来源（可选）
+            start_date: 开始日期
+            end_date: 结束日期
+            
+        Returns:
+            新闻列表
+        """
+        # 尝试从Tushare获取
+        if self.providers and isinstance(self.providers[0], RealDataProvider):
+            try:
+                params = {}
+                if src:
+                    params["src"] = src
+                if start_date:
+                    params["start_date"] = start_date
+                if end_date:
+                    params["end_date"] = end_date
+                
+                data = self.providers[0].call_tushare_api(
+                    "news",
+                    params=params,
+                    fields="title,content,pub_time,src,channels"
+                )
+                
+                if data and data.get("items"):
+                    result = []
+                    fields = data["fields"]
+                    for item in data["items"]:
+                        item_data = {}
+                        for i, field in enumerate(fields):
+                            if i < len(item):
+                                item_data[field] = item[i]
+                        result.append(item_data)
+                    self._mark_success("Tushare", "news")
+                    print(f"✅ [news] 使用数据源: Tushare")
+                    return result
+            except Exception as e:
+                print(f"⚠️ [news] Tushare失败: {e}")
+        
+        # 回退到AkShare
+        for provider in self.providers:
+            if isinstance(provider, AkShareDataProvider):
+                result = provider.get_stock_news()
+                if result:
+                    self._mark_success("AkShare", "news")
+                    print(f"✅ [news] 使用数据源: AkShare")
+                    return result
+        
+        return None
+
+
 class MockDataProvider:
     """
     模拟数据提供者（备份方案）
@@ -492,21 +1211,16 @@ def get_data_provider(use_real_data=True, token=None):
         token: Tushare Pro API token
         
     Returns:
-        数据提供者实例
+        数据提供者实例（支持三层数据源回退）
     """
     if use_real_data:
         try:
-            provider = RealDataProvider(token)
-            # 测试API连接
-            test_result = provider.get_stock_basic_info("601868.SH")
-            if test_result:
-                print("✅ 真实数据API连接成功")
-                return provider
-            else:
-                print("⚠️ 真实数据API连接失败，使用模拟数据")
-                return MockDataProvider()
+            # 使用新的链式回退数据提供者
+            provider = FallbackDataProvider(token)
+            print("✅ 三层数据源架构初始化完成")
+            return provider
         except Exception as e:
-            print(f"⚠️ 初始化真实数据提供者失败: {e}")
+            print(f"⚠️ 初始化数据提供者失败: {e}，使用模拟数据")
             return MockDataProvider()
     else:
         print("ℹ️ 使用模拟数据模式")
@@ -515,22 +1229,60 @@ def get_data_provider(use_real_data=True, token=None):
 
 # 测试代码
 if __name__ == "__main__":
-    print("测试数据提供者模块...")
+    print("=" * 60)
+    print("测试三层数据源架构")
+    print("=" * 60)
     
     # 测试模拟数据
+    print("\n【测试1】模拟数据提供者...")
     mock_provider = MockDataProvider()
     holdings = mock_provider.get_all_holdings_data()
-    print(f"模拟持仓数据: {len(holdings)} 只股票")
+    print(f"✅ 模拟持仓数据: {len(holdings)} 只股票")
     
-    # 测试真实数据（需要token）
+    # 测试三层数据源架构（无 Token 也可测试 AkShare/Mock 回退）
+    token = os.getenv('TUSHARE_TOKEN')
+    print("\n【测试2】三层数据源架构初始化...")
+    if token:
+        print(f"检测到 Tushare Token: {token[:8]}...")
+    else:
+        print("⚠️ 未检测到 Tushare Token，将测试 AkShare / Mock 回退链路")
+        
     try:
-        token = os.getenv('TUSHARE_TOKEN')
-        if token:
-            print(f"检测到Tushare Token，测试真实数据...")
-            real_provider = RealDataProvider(token)
-            test_price = real_provider.get_stock_realtime_price("601868.SH")
-            print(f"中国能建实时价格: {test_price}")
+        # 初始化三层数据源
+        provider = get_data_provider(use_real_data=True, token=token)
+        
+        print("\n【测试3】测试北向资金接口...")
+        north_data = provider.get_moneyflow_hsgt() if hasattr(provider, "get_moneyflow_hsgt") else None
+        if north_data:
+            print(f"✅ 北向资金数据: {len(north_data)} 条记录")
+            print(f"   最新: {north_data[0] if north_data else '无数据'}")
+        else:
+            print("⚠️ 北向资金暂无可用数据")
+        
+        print("\n【测试4】测试指数日线接口...")
+        index_data = provider.get_index_daily("000001.SH") if hasattr(provider, "get_index_daily") else None
+        if index_data:
+            print(f"✅ 上证指数日线: {len(index_data)} 条记录")
+            print(f"   最新: {index_data[-1] if index_data else '无数据'}")
+        else:
+            print("⚠️ 指数日线暂无可用数据")
+        
+        print("\n【测试5】测试涨停池接口...")
+        limit_list = provider.get_limit_list_d() if hasattr(provider, "get_limit_list_d") else None
+        if limit_list:
+            print(f"✅ 涨停股票数: {len(limit_list)} 只")
+        else:
+            print("⚠️ 涨停池暂无可用数据")
+        
+        print("\n【测试6】测试实时价格...")
+        price = provider.get_stock_realtime_price("601868.SH")
+        print(f"✅ 中国能建实时价格: {price}")
+        
     except Exception as e:
-        print(f"真实数据测试失败: {e}")
+        print(f"❌ 测试失败: {e}")
+        import traceback
+        traceback.print_exc()
     
+    print("\n" + "=" * 60)
     print("测试完成！")
+    print("=" * 60)

@@ -588,6 +588,53 @@
     </div>
   </div>
 
+  <!-- ===== 真实数据扩展面板 ===== -->
+  <div class="data-panels-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px">
+    <!-- 北向资金面板 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">💰 北向资金流向</span>
+        <span id="moneyflow-source" style="font-size:11px;color:var(--text-dim)"></span>
+      </div>
+      <div class="panel-body" id="moneyflow-body" style="max-height:400px;overflow-y:auto">
+        <div class="loading-wrap"><div class="spinner"></div><span>加载北向资金数据…</span></div>
+      </div>
+    </div>
+
+    <!-- 涨跌停面板 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">📊 涨跌停列表</span>
+        <span id="limitlist-source" style="font-size:11px;color:var(--text-dim)"></span>
+      </div>
+      <div class="panel-body" id="limitlist-body" style="max-height:400px;overflow-y:auto">
+        <div class="loading-wrap"><div class="spinner"></div><span>加载涨跌停数据…</span></div>
+      </div>
+    </div>
+
+    <!-- 新闻快讯面板 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">📰 新闻快讯</span>
+        <span id="news-source" style="font-size:11px;color:var(--text-dim)"></span>
+      </div>
+      <div class="panel-body" id="news-body" style="max-height:400px;overflow-y:auto">
+        <div class="loading-wrap"><div class="spinner"></div><span>加载新闻快讯…</span></div>
+      </div>
+    </div>
+
+    <!-- 指数数据面板 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">📈 指数详情</span>
+        <span id="index-source" style="font-size:11px;color:var(--text-dim)"></span>
+      </div>
+      <div class="panel-body" id="index-body" style="max-height:400px;overflow-y:auto">
+        <div class="loading-wrap"><div class="spinner"></div><span>加载指数数据…</span></div>
+      </div>
+    </div>
+  </div>
+
   <!-- 五维分析卡片区 -->
   <div class="analysis-section">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -949,6 +996,10 @@ let state = {
   market: null,
   selectedStock: null,
   priceHistory: {},
+  moneyflow: null,
+  limitList: null,
+  news: null,
+  indexData: null,
   positionModal: {
     mode: 'create',
     originalCode: null,
@@ -1489,6 +1540,164 @@ function renderMarket() {
 }
 
 /* ======================================================
+   北向资金
+   ====================================================== */
+async function loadMoneyflow() {
+  const data = await apiFetch('/api/moneyflow_hsgt', () => ({ data: [], data_source: '演示数据' }));
+  if(!data) return;
+  state.moneyflow = data;
+  renderMoneyflow();
+}
+
+function renderMoneyflow() {
+  const d = state.moneyflow;
+  if(!d) return;
+  document.getElementById('moneyflow-source').textContent = d.data_source || '';
+  
+  const flows = d.data || [];
+  if(flows.length === 0) {
+    document.getElementById('moneyflow-body').innerHTML = '<div class="empty-state">暂无北向资金数据</div>';
+    return;
+  }
+  
+  const rows = flows.slice(0, 10).map(f => {
+    const northSign = f.north_money >= 0 ? '+' : '';
+    const southSign = f.south_money >= 0 ? '+' : '';
+    return `
+      <div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="color:var(--text-dim)">${f.trade_date || ''}</span>
+        </div>
+        <div style="display:flex;gap:20px">
+          <span>北向: <span class="${colorClass(f.north_money)}" style="font-weight:600">${northSign}${(f.north_money||0).toFixed(2)}亿</span></span>
+          <span>南向: <span class="${colorClass(-f.south_money)}" style="font-weight:600">${southSign}${(f.south_money||0).toFixed(2)}亿</span></span>
+        </div>
+      </div>`;
+  }).join('');
+  
+  document.getElementById('moneyflow-body').innerHTML = rows || '<div class="empty-state">暂无数据</div>';
+}
+
+/* ======================================================
+   涨跌停列表
+   ====================================================== */
+async function loadLimitList() {
+  const data = await apiFetch('/api/limit_list_d', () => ({ data: [], data_source: '演示数据' }));
+  if(!data) return;
+  state.limitList = data;
+  renderLimitList();
+}
+
+function renderLimitList() {
+  const d = state.limitList;
+  if(!d) return;
+  document.getElementById('limitlist-source').textContent = d.data_source || '';
+  
+  const list = d.data || [];
+  if(list.length === 0) {
+    document.getElementById('limitlist-body').innerHTML = '<div class="empty-state">暂无涨跌停数据</div>';
+    return;
+  }
+  
+  const rows = list.slice(0, 15).map(item => {
+    const isUp = (item.p_change || 0) > 0;
+    const changeClass = isUp ? 'up' : 'down';
+    const changeText = isUp ? '涨停' : '跌停';
+    return `
+      <div style="padding:8px 0;border-bottom:1px solid rgba(48,54,61,.5);font-size:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <span style="font-weight:600">${item.name || item.ts_code}</span>
+            <span style="color:var(--text-dim);margin-left:6px">${item.ts_code}</span>
+          </div>
+          <span class="${changeClass}" style="font-weight:600">${changeText} ${fmt.pct(item.p_change)}</span>
+        </div>
+        <div style="margin-top:4px;color:var(--text-dim)">
+          成交额: ${((item.amount || 0) / 1e8).toFixed(2)}亿
+        </div>
+      </div>`;
+  }).join('');
+  
+  document.getElementById('limitlist-body').innerHTML = rows || '<div class="empty-state">暂无数据</div>';
+}
+
+/* ======================================================
+   新闻快讯
+   ====================================================== */
+async function loadNews() {
+  const data = await apiFetch('/api/news', () => ({ data: [], data_source: '演示数据' }));
+  if(!data) return;
+  state.news = data;
+  renderNews();
+}
+
+function renderNews() {
+  const d = state.news;
+  if(!d) return;
+  document.getElementById('news-source').textContent = d.data_source || '';
+  
+  const news = d.data || [];
+  if(news.length === 0) {
+    document.getElementById('news-body').innerHTML = '<div class="empty-state">暂无新闻数据</div>';
+    return;
+  }
+  
+  const rows = news.slice(0, 10).map(n => `
+    <div style="padding:10px 0;border-bottom:1px solid rgba(48,54,61,.5)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;line-height:1.5">${n.title || ''}</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:6px">${(n.content || '').substring(0, 100)}...</div>
+      <div style="font-size:11px;color:var(--text-dim)">${n.time || ''}</div>
+    </div>`).join('');
+  
+  document.getElementById('news-body').innerHTML = rows || '<div class="empty-state">暂无数据</div>';
+}
+
+/* ======================================================
+   指数数据
+   ====================================================== */
+async function loadIndexData() {
+  // 获取上证指数日线数据
+  const data = await apiFetch('/api/index_daily/000001.SH', () => ({ data: [], data_source: '演示数据' }));
+  if(!data) return;
+  state.indexData = data;
+  renderIndexData();
+}
+
+function renderIndexData() {
+  const d = state.indexData;
+  if(!d) return;
+  document.getElementById('index-source').textContent = d.data_source || '';
+  
+  const idxData = d.data || [];
+  if(idxData.length === 0) {
+    document.getElementById('index-body').innerHTML = '<div class="empty-state">暂无指数数据</div>';
+    return;
+  }
+  
+  const rows = idxData.slice(0, 15).map(item => {
+    const change = item.pct_chg || 0;
+    return `
+      <div style="padding:8px 0;border-bottom:1px solid rgba(48,54,61,.5);font-size:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="color:var(--text-dim)">${item.trade_date || ''}</span>
+          <div style="text-align:right">
+            <div style="font-weight:600">${fmt.num(item.close)}</div>
+            <div class="${colorClass(change)}" style="font-size:11px">${fmt.pct(change)}</div>
+          </div>
+        </div>
+        <div style="margin-top:4px;color:var(--text-dim);display:flex;gap:12px;font-size:11px">
+          <span>开:${fmt.num(item.open)}</span>
+          <span>高:${fmt.num(item.high)}</span>
+          <span>低:${fmt.num(item.low)}</span>
+          <span>量:${((item.vol||0)/1e8).toFixed(2)}亿手</span>
+        </div>
+      </div>`;
+  }).join('');
+  
+  document.getElementById('index-body').innerHTML = rows || '<div class="empty-state">暂无数据</div>';
+}
+
+/* ======================================================
    五维分析卡片
    ====================================================== */
 async function analyzeAll() {
@@ -1834,17 +2043,38 @@ function drawPriceChart(history, title) {
    ====================================================== */
 async function refreshAll() {
   await checkApiStatus();
-  await Promise.all([loadPositions(), loadMarket()]);
+  await Promise.all([
+    loadPositions(), 
+    loadMarket(),
+    loadMoneyflow(),
+    loadLimitList(),
+    loadNews(),
+    loadIndexData()
+  ]);
   renderChartTabs();
 }
 
 async function init() {
   await checkApiStatus();
-  await Promise.all([loadPositions(), loadMarket()]);
+  await Promise.all([
+    loadPositions(), 
+    loadMarket(),
+    loadMoneyflow(),
+    loadLimitList(),
+    loadNews(),
+    loadIndexData()
+  ]);
   renderChartTabs();
   setInterval(async()=>{
     await checkApiStatus();
-    await Promise.all([loadPositions(), loadMarket()]);
+    await Promise.all([
+      loadPositions(), 
+      loadMarket(),
+      loadMoneyflow(),
+      loadLimitList(),
+      loadNews(),
+      loadIndexData()
+    ]);
     renderChartTabs();
   }, CONFIG.refreshInterval);
 }
