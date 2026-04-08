@@ -848,7 +848,7 @@ class FallbackDataProvider:
             *args, **kwargs: 方法参数
             
         Returns:
-            第一个成功的数据提供者的结果
+            第一个成功的数据提供者的结果，如果所有真实数据源均失败，返回空结构避免崩溃
         """
         for i, provider in enumerate(self.providers):
             try:
@@ -864,8 +864,32 @@ class FallbackDataProvider:
                 print(f"⚠️ [{method_name}] {self.provider_names[i]} 失败: {e}")
                 continue
         
-        print(f"❌ [{method_name}] 所有数据源均失败")
-        return None
+        print(f"⚠️ [{method_name}] 所有数据源均失败，返回空结构避免崩溃")
+        
+        # 根据方法名返回对应的空结构，避免调用方因 None 而崩溃
+        if method_name == "get_market_overview":
+            return {
+                "indices": [],
+                "toplist": [],
+                "updated_at": "2026-01-01 00:00:00"
+            }
+        elif method_name == "get_all_holdings_data":
+            return []
+        elif method_name == "get_moneyflow_hsgt":
+            return []
+        elif method_name == "get_limit_list_d":
+            return []
+        elif method_name == "get_news":
+            return []
+        elif method_name == "get_stock_basic_info":
+            return {}
+        elif method_name == "get_daily_quotes":
+            return []
+        elif method_name == "get_financial_indicators":
+            return {}
+        else:
+            # 对于其他方法，返回 None 但至少程序不会因空数据而崩溃
+            return None
     
     # 统一接口方法
     def get_stock_basic_info(self, ts_code):
