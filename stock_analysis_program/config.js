@@ -1,15 +1,15 @@
 // 智能股票分析系统 - 统一运行时配置
 window.APP_CONFIG = {
-    version: '2026.04.07-2',
+    version: '2026.04.08-2',
     api: {
         // 本地开发环境 API 地址
         development: 'http://localhost:9000',
-        // 生产环境（公网/GitHub Pages）API 地址
-        // 填写方式（三选一）：
-        //   1) 直接填写：production: 'https://xxxx.ngrok-free.app'
-        //   2) 固定域名（推荐长期使用）：production: 'https://api.stock-analysis.example.com'
-        //   3) 留空：通过 URL 参数 ?api=https://xxx 临时指定
-        production: 'http://101.133.150.164:9000',
+        // 生产环境 API 地址
+        // 推荐值：'same-origin'，表示前端与后端部署在同一域名下，自动使用当前站点 origin
+        // 其他可选：
+        //   1) 直接填写 HTTPS API：production: 'https://api.stock-analysis.example.com'
+        //   2) 临时通过 URL 参数覆盖：?api=https://xxx
+        production: 'same-origin',
         // 是否允许通过 URL 参数 ?api=xxx 覆盖配置
         allowQueryOverride: true,
         // 公网穿透工具配置说明
@@ -46,18 +46,34 @@ window.resolveApiBaseUrl = function resolveApiBaseUrl() {
     const queryApi = config.allowQueryOverride === false ? '' : (params.get('api') || '').trim();
     const hostname = window.location.hostname;
     const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isHttpsPage = window.location.protocol === 'https:';
 
     const normalize = (value) => (value || '').trim().replace(/\/+$/, '');
+    const isInsecureApi = (value) => /^http:\/\//i.test(normalize(value));
+    const isSameOriginMode = (value) => ['same-origin', 'sameorigin', 'origin'].includes(normalize(value).toLowerCase());
+    const resolveSameOrigin = () => normalize(window.location.origin || '');
 
     if (queryApi) {
-        return normalize(queryApi);
+        if (isSameOriginMode(queryApi)) {
+            return resolveSameOrigin();
+        }
+        return isHttpsPage && isInsecureApi(queryApi) ? '' : normalize(queryApi);
     }
 
     if (isLocalHost) {
         return normalize(config.development);
     }
 
-    return normalize(config.production);
+    if (isSameOriginMode(config.production)) {
+        return resolveSameOrigin();
+    }
+
+    const productionApi = normalize(config.production);
+    if (isHttpsPage && isInsecureApi(productionApi)) {
+        return '';
+    }
+
+    return productionApi;
 };
 
 /**
@@ -66,17 +82,28 @@ window.resolveApiBaseUrl = function resolveApiBaseUrl() {
 window.getApiConfigStatus = function getApiConfigStatus() {
     const hostname = window.location.hostname;
     const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
-    const apiBaseUrl = window.resolveApiBaseUrl();
+    const isHttpsPage = window.location.protocol === 'https:';
     const config = (window.APP_CONFIG && window.APP_CONFIG.api) || {};
+    const normalize = (value) => (value || '').trim().replace(/\/+$/, '');
+    const isSameOriginMode = (value) => ['same-origin', 'sameorigin', 'origin'].includes(normalize(value).toLowerCase());
+    const requestedApi = config.allowQueryOverride === false
+        ? normalize(isLocalHost ? config.development : config.production)
+        : normalize((new URLSearchParams(window.location.search).get('api')) || (isLocalHost ? config.development : config.production));
+    const mixedContentBlocked = Boolean(!isLocalHost && isHttpsPage && requestedApi && !isSameOriginMode(requestedApi) && /^http:\/\//i.test(requestedApi));
+    const apiBaseUrl = window.resolveApiBaseUrl();
 
     return {
         apiBaseUrl,
+        requestedApi,
+        requestedMode: isSameOriginMode(requestedApi) ? 'same-origin' : 'custom',
         isConfigured: Boolean(apiBaseUrl),
         mode: isLocalHost ? 'development' : 'production',
         version: window.APP_CONFIG && window.APP_CONFIG.version,
         hasProductionConfig: Boolean(config.production),
         canUseQueryOverride: config.allowQueryOverride !== false,
         currentUrl: location.href,
+        blockedReason: mixedContentBlocked ? 'mixed-content' : '',
+        blockedApiBaseUrl: mixedContentBlocked ? requestedApi : '',
         tunnelHints: config.tunnel || {}
     };
 };

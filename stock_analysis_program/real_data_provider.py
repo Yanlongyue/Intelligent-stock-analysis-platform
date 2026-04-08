@@ -765,20 +765,22 @@ class AkShareDataProvider:
 class FallbackDataProvider:
     """
     链式回退数据提供者
-    按优先级依次尝试: Tushare -> AkShare -> Mock数据
+    按优先级依次尝试: Tushare -> AkShare，默认不再回退到 Mock 数据
     """
     
-    def __init__(self, tushare_token=None):
+    def __init__(self, tushare_token=None, enable_mock=False):
         """
         初始化链式回退数据提供者
         
         Args:
             tushare_token: Tushare API token
+            enable_mock: 是否启用 Mock 作为最终回退
         """
         self.providers = []
         self.provider_names = []
         self.real_provider_names = []
-        self.last_successful_provider = "Mock"
+        self.enable_mock = bool(enable_mock)
+        self.last_successful_provider = None
         self.last_successful_method = None
         
         # 第一层: Tushare（主数据源）
@@ -803,22 +805,34 @@ class FallbackDataProvider:
         except Exception as e:
             print(f"⚠️ AkShare初始化失败: {e}")
         
-        # 第三层: Mock数据（最终回退）
-        self.mock_provider = MockDataProvider()
-        self.providers.append(self.mock_provider)
-        self.provider_names.append("Mock")
-        print("✅ 第三层数据源（Mock）就绪")
+        # 第三层: Mock数据（仅在显式启用时作为最终回退）
+        self.mock_provider = None
+        if self.enable_mock:
+            self.mock_provider = MockDataProvider()
+            self.providers.append(self.mock_provider)
+            self.provider_names.append("Mock")
+            print("✅ 第三层数据源（Mock）就绪")
+        else:
+            print("🚫 Mock 数据回退已禁用")
         
-        print(f"📋 数据源优先级: {' -> '.join(self.provider_names)}")
+        print(f"📋 数据源优先级: {' -> '.join(self.provider_names) if self.provider_names else '无可用数据源'}")
     
     def has_real_source(self):
         """是否存在至少一个真实数据源"""
         return len(self.real_provider_names) > 0
     
+    def get_active_provider_name(self):
+        """获取最近一次成功使用的数据源名称"""
+        return self.last_successful_provider
+    
     def get_data_source_label(self):
         """获取当前数据源描述"""
-        current = self.last_successful_provider or (self.real_provider_names[0] if self.real_provider_names else "Mock")
-        return f"{current}（优先链路: {' -> '.join(self.provider_names)}）"
+        chain = ' -> '.join(self.provider_names) if self.provider_names else '无可用数据源'
+        if self.last_successful_provider:
+            return f"{self.last_successful_provider}（优先链路: {chain}）"
+        if self.real_provider_names:
+            return f"真实数据链路已就绪（优先链路: {chain}）"
+        return "未接入真实数据源"
     
     def _mark_success(self, provider_name, method_name):
         """记录最近一次成功使用的数据源"""
@@ -1202,29 +1216,30 @@ class MockDataProvider:
 
 
 # 数据提供者工厂
-def get_data_provider(use_real_data=True, token=None):
+def get_data_provider(use_real_data=True, token=None, enable_mock=False):
     """
     获取数据提供者实例
     
     Args:
         use_real_data: 是否使用真实数据
         token: Tushare Pro API token
+        enable_mock: 是否显式启用 Mock 回退
         
     Returns:
-        数据提供者实例（支持三层数据源回退）
+        数据提供者实例（默认仅保留真实数据链路）
     """
     if use_real_data:
         try:
-            # 使用新的链式回退数据提供者
-            provider = FallbackDataProvider(token)
-            print("✅ 三层数据源架构初始化完成")
+            provider = FallbackDataProvider(token, enable_mock=enable_mock)
+            print("✅ 真实数据链路初始化完成")
             return provider
         except Exception as e:
-            print(f"⚠️ 初始化数据提供者失败: {e}，使用模拟数据")
-            return MockDataProvider()
-    else:
-        print("ℹ️ 使用模拟数据模式")
+            print(f"⚠️ 初始化数据提供者失败: {e}")
+            return FallbackDataProvider(token=None, enable_mock=enable_mock)
+    if enable_mock:
+        print("ℹ️ 使用 Mock 演示数据模式")
         return MockDataProvider()
+    return FallbackDataProvider(token=None, enable_mock=False)
 
 
 # 测试代码

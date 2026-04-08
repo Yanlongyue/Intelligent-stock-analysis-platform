@@ -501,7 +501,7 @@
     <span style="font-size:16px;">🔗</span><strong style="color:#d29922;">连接后端以启用完整功能（持仓 CRUD + 真实数据分析）</strong>
   </div>
   <div style="color:#8b949e;line-height:1.7;">
-    当前页面运行在<strong style="color:#c9d1d9;">公网模式</strong>，但未配置后端 API 地址。请选择以下方式之一：
+    当前页面运行在<strong style="color:#c9d1d9;">公网模式</strong>。如果未配置后端地址，或配置的是 HTTP 地址但当前页面是 HTTPS，浏览器都会拦截请求。请选择以下方式之一：
   </div>
   <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
     <code style="background:#21262d;padding:6px 12px;border-radius:6px;color:#58a6ff;font-size:12px;border:1px solid #30363d;">
@@ -887,7 +887,7 @@
 
   <div class="disclaimer">
     ⚠️ 本平台仅供参考，不构成投资建议。股市有风险，投资需谨慎。<br>
-    数据来源：Tushare Pro（真实数据模式）/ 内置模拟引擎（演示模式）
+    数据来源：Tushare Pro / AkShare / 本地持仓文件（已停用前端演示数据与模拟分析）
   </div>
 </div>
 
@@ -1050,7 +1050,7 @@ function normalizePosition(position) {
 }
 
 function getSeedPositions() {
-  return MOCK_POSITIONS.map(normalizePosition);
+  return [];
 }
 
 function getLocalPositions() {
@@ -1061,7 +1061,7 @@ function getLocalPositions() {
     if(!Array.isArray(parsed) || !parsed.length) return getSeedPositions();
     return parsed.map(normalizePosition);
   } catch(err) {
-    console.warn('读取本地持仓失败，回退默认数据', err);
+    console.warn('读取本地持仓失败，返回空持仓列表', err);
     return getSeedPositions();
   }
 }
@@ -1112,20 +1112,26 @@ async function checkApiStatus() {
   if(!CONFIG.api) {
     const statusInfo = window.getApiConfigStatus ? window.getApiConfigStatus() : {};
     const isProdMode = statusInfo.mode === 'production';
+    const blockedReason = statusInfo.blockedReason || '';
     dot.className = 'status-dot mock';
     if (isProdMode) {
-      txt.innerHTML = '<span title="' + (statusInfo.currentUrl || '') + '">🌐 公网模式 — 未配置后端 API 地址</span>';
-      // 显示配置提示
       const hintEl = document.getElementById('api-config-hint');
       if (hintEl) hintEl.style.display = '';
+      if (blockedReason === 'mixed-content') {
+        txt.innerHTML = '<span title="' + (statusInfo.blockedApiBaseUrl || '') + '">🌐 当前页面为 HTTPS，浏览器会拦截 HTTP API</span>';
+        badge.textContent = '需 HTTPS';
+      } else {
+        txt.innerHTML = '<span title="' + (statusInfo.currentUrl || '') + '">🌐 公网模式 — 未配置后端 API 地址</span>';
+        badge.textContent = '未连接';
+      }
     } else {
-      txt.textContent = '静态演示模式（未连接后端）';
+      txt.textContent = '未连接后端，当前不显示演示数据';
+      badge.textContent = '未连接';
     }
-    badge.textContent = '模拟数据';
-    badge.className = 'status-badge badge-mock';
+    badge.className = 'status-badge badge-offline';
     badge.style.display = '';
     state.apiOnline = false;
-    state.dataSource = 'mock';
+    state.dataSource = 'unavailable';
     timeEl.textContent = fmt.now();
     return;
   }
@@ -1134,57 +1140,58 @@ async function checkApiStatus() {
     const health = await apiFetch('/api/health');
     if(health && health.status === 'healthy') {
       state.apiOnline = true;
-      const isReal = health.data_provider === 'Tushare Pro';
-      state.dataSource = isReal ? 'real' : 'mock';
-      dot.className = 'status-dot online';
-      txt.textContent = '后端已连接 · ' + (isReal ? 'Tushare Pro 真实数据' : '模拟数据模式');
-      badge.textContent = isReal ? '真实数据' : '模拟数据';
-      badge.className = 'status-badge ' + (isReal ? 'badge-real' : 'badge-mock');
+      const status = health.data_status || '';
+      const activeProvider = health.active_provider || '';
+      const isRealActive = status === 'real_data_active' && activeProvider && activeProvider !== 'Mock';
+      const isRealReady = isRealActive || status === 'real_data_ready';
+      state.dataSource = isRealActive ? 'real' : (isRealReady ? 'ready' : 'unavailable');
+      dot.className = 'status-dot ' + (isRealReady ? 'online' : 'mock');
+      txt.textContent = isRealActive
+        ? ('后端已连接 · ' + activeProvider + ' 真实数据')
+        : (isRealReady ? '后端已连接 · 真实数据链路已就绪，等待首次取数' : '后端已连接 · 暂无真实数据');
+      badge.textContent = isRealActive ? activeProvider : (isRealReady ? '已就绪' : '无数据');
+      badge.className = 'status-badge ' + (isRealReady ? 'badge-real' : 'badge-offline');
       badge.style.display = '';
     } else {
       throw new Error('unhealthy');
     }
   } catch(e) {
     dot.className = 'status-dot offline';
-    txt.textContent = '后端离线 · 使用内置演示数据';
+    txt.textContent = '后端离线 · 不再显示演示数据';
     badge.textContent = '离线';
     badge.className = 'status-badge badge-offline';
     badge.style.display = '';
     state.apiOnline = false;
-    state.dataSource = 'mock';
+    state.dataSource = 'unavailable';
   }
   timeEl.textContent = '更新于 ' + fmt.now();
 }
 
 /* ======================================================
-   Mock 数据生成（后端离线时）
+   本地持仓辅助（仅在后端不可用时保留用户自行录入的持仓，不再生成演示行情）
    ====================================================== */
-const MOCK_POSITIONS = [
-  { code:'601868.SH', name:'中国能建', amount:400, cost_price:2.85, type:'value',   industry:'建筑业', current_price:3.18 },
-  { code:'002506.SZ', name:'协鑫集成', amount:400, cost_price:2.32, type:'growth',  industry:'光伏', current_price:2.06 },
-  { code:'600821.SH', name:'金开新能', amount:600, cost_price:4.50, type:'concept', industry:'新能源', current_price:3.85 }
-];
-
 function enrichPosition(position) {
-  const currentPrice = Number(position.current_price ?? position.cost_price ?? 0);
+  const rawCurrentPrice = position.current_price;
+  const currentPrice = rawCurrentPrice == null || rawCurrentPrice === '' ? null : Number(rawCurrentPrice);
   const amount = Number(position.amount || 0);
   const costPrice = Number(position.cost_price || 0);
-  const positionValue = amount * currentPrice;
   const costValue = amount * costPrice;
-  const profitLoss = positionValue - costValue;
-  const profitLossPct = costValue > 0 ? (profitLoss / costValue * 100) : 0;
+  const hasCurrentPrice = Number.isFinite(currentPrice);
+  const positionValue = hasCurrentPrice ? amount * currentPrice : null;
+  const profitLoss = hasCurrentPrice ? (positionValue - costValue) : null;
+  const profitLossPct = hasCurrentPrice && costValue > 0 ? (profitLoss / costValue * 100) : null;
   return {
     ...normalizePosition(position),
-    current_price: Number(currentPrice.toFixed(2)),
-    position_value: Number(positionValue.toFixed(2)),
+    current_price: hasCurrentPrice ? Number(currentPrice.toFixed(2)) : null,
+    position_value: hasCurrentPrice ? Number(positionValue.toFixed(2)) : null,
     cost_value: Number(costValue.toFixed(2)),
-    profit_loss: Number(profitLoss.toFixed(2)),
-    profit_loss_pct: Number(profitLossPct.toFixed(2)),
+    profit_loss: hasCurrentPrice ? Number(profitLoss.toFixed(2)) : null,
+    profit_loss_pct: hasCurrentPrice ? Number(profitLossPct.toFixed(2)) : null,
     last_updated: fmt.now()
   };
 }
 
-function getMockPositions() {
+function getOfflinePositions() {
   const positions = getLocalPositions().map(enrichPosition);
   const total_value = positions.reduce((sum, item) => sum + item.position_value, 0);
   const total_cost = positions.reduce((sum, item) => sum + item.cost_value, 0);
@@ -1196,70 +1203,11 @@ function getMockPositions() {
       total_cost: Number(total_cost.toFixed(2)),
       total_profit: Number(total_profit.toFixed(2)),
       total_profit_pct: total_cost > 0 ? Number((total_profit / total_cost * 100).toFixed(2)) : 0,
-      data_source: '浏览器离线持仓'
+      data_source: '浏览器本地持仓'
     },
     positions,
     timestamp: fmt.now()
   };
-}
-
-function getMockAnalysis(code) {
-  const base = {
-    '601868.SH':[3.2,2.8,2.5,3.1,2.6],
-    '002506.SZ':[2.8,3.2,3.5,2.9,3.3],
-    '600821.SH':[2.5,3.5,3.8,2.7,4.0]
-  };
-  const pos = getCurrentPositionList().find(item => item.code === code) || {};
-  const sc = base[code] || [2.5,2.5,2.5,2.5,2.5];
-  const dims = ['international','policy','company','technical','sentiment'];
-  const algo = {};
-  dims.forEach((d, i) => algo[d] = sc[i]);
-  const total = sc.reduce((a,b)=>a+b,0) / sc.length;
-  return {
-    stock_code: code,
-    stock_name: pos.name || code,
-    current_price: pos.current_price || pos.cost_price || 0,
-    algorithm_scores: algo,
-    comprehensive_score: total,
-    risk_level: total > 3.5 ? '高风险' : total > 2.5 ? '中风险' : '低风险',
-    trading_signal: total > 3.5 ? '谨慎持有' : total > 3.0 ? '中性观望' : total > 2.5 ? '可以持有' : '关注机会',
-    key_signals: ['数据来自离线演示引擎', '可在页面直接增删改持仓', '连接后端后会自动切换为真实数据分析'],
-    action_plan: { position:'维持现有仓位', stop_loss:'详见后端分析', take_profit:'详见后端分析', note:'演示模式' }
-  };
-}
-
-function getMockMarket() {
-  return {
-    indices: [
-      {code:'000001.SH',name:'上证指数',price:3201.25,change:0.35},
-      {code:'399001.SZ',name:'深证成指',price:9823.47,change:-0.12},
-      {code:'399006.SZ',name:'创业板指',price:1934.81,change:0.67}
-    ],
-    market_sentiment: { rise_count:1120, fall_count:680, flat_count:200, hot_stocks:12, rise_ratio:56.0 },
-    trading_info: { total_volume:65000000000, total_amount:980000000000, northbound_inflow:8.5, southbound_inflow:3.2 },
-    data_source: '演示数据'
-  };
-}
-
-function getMockPriceHistory(code) {
-  const base = getCurrentPositionList().find(p => p.code === code)?.current_price || 3.0;
-  const history = [];
-  let p = base * (1 + (Math.random() - 0.5) * 0.3);
-  for(let i = 29; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0,10).replace(/-/g, '');
-    p *= (1 + (Math.random() - 0.5) * 0.04);
-    history.push({
-      date: dateStr,
-      open: +(p * (1 + (Math.random() - 0.5) * 0.01)).toFixed(2),
-      close: +p.toFixed(2),
-      high: +(p * 1.01).toFixed(2),
-      low: +(p * 0.99).toFixed(2),
-      volume: Math.round(Math.random() * 5e7)
-    });
-  }
-  return { stock_code: code, price_history: history };
 }
 
 function clearPositionFormError() {
@@ -1415,7 +1363,7 @@ async function deletePosition(code, event) {
    持仓渲染
    ====================================================== */
 async function loadPositions() {
-  const data = await apiFetch('/api/positions', getMockPositions);
+  const data = await apiFetch('/api/positions', getOfflinePositions);
   if(!data) return;
   if(state.apiOnline && Array.isArray(data.positions)) {
     saveLocalPositions(data.positions);
@@ -1491,7 +1439,12 @@ function renderPositions() {
    市场概况
    ====================================================== */
 async function loadMarket() {
-  const data = await apiFetch('/api/market_overview', getMockMarket);
+  const data = await apiFetch('/api/market_overview', () => ({
+    indices: [],
+    market_sentiment: { rise_count: 0, fall_count: 0, flat_count: 0, hot_stocks: 0, rise_ratio: 0 },
+    trading_info: { total_volume: 0, total_amount: 0, northbound_inflow: 0, southbound_inflow: 0 },
+    data_source: '暂无真实数据'
+  }));
   if(!data) return;
   state.market = data;
   renderMarket();
@@ -1543,7 +1496,7 @@ function renderMarket() {
    北向资金
    ====================================================== */
 async function loadMoneyflow() {
-  const data = await apiFetch('/api/moneyflow_hsgt', () => ({ data: [], data_source: '演示数据' }));
+  const data = await apiFetch('/api/moneyflow_hsgt', () => ({ data: [], data_source: '暂无真实数据' }));
   if(!data) return;
   state.moneyflow = data;
   renderMoneyflow();
@@ -1582,7 +1535,7 @@ function renderMoneyflow() {
    涨跌停列表
    ====================================================== */
 async function loadLimitList() {
-  const data = await apiFetch('/api/limit_list_d', () => ({ data: [], data_source: '演示数据' }));
+  const data = await apiFetch('/api/limit_list_d', () => ({ data: [], data_source: '暂无真实数据' }));
   if(!data) return;
   state.limitList = data;
   renderLimitList();
@@ -1625,7 +1578,7 @@ function renderLimitList() {
    新闻快讯
    ====================================================== */
 async function loadNews() {
-  const data = await apiFetch('/api/news', () => ({ data: [], data_source: '演示数据' }));
+  const data = await apiFetch('/api/news', () => ({ data: [], data_source: '暂无真实数据' }));
   if(!data) return;
   state.news = data;
   renderNews();
@@ -1657,7 +1610,7 @@ function renderNews() {
    ====================================================== */
 async function loadIndexData() {
   // 获取上证指数日线数据
-  const data = await apiFetch('/api/index_daily/000001.SH', () => ({ data: [], data_source: '演示数据' }));
+  const data = await apiFetch('/api/index_daily/000001.SH', () => ({ data: [], data_source: '暂无真实数据' }));
   if(!data) return;
   state.indexData = data;
   renderIndexData();
@@ -1726,17 +1679,19 @@ async function analyzeAll() {
 
   // 获取分析数据
   const data = await apiFetch('/api/analyze_all', () => ({
-    stocks: getCurrentPositionList().map(p => ({
-      ...getMockAnalysis(p.code),
-      position_info: { type:p.type, amount:p.amount, cost_price:p.cost_price, industry:p.industry || '' }
-    })),
-    overall_analysis: { overall_score:2.8, overall_risk:'中风险', data_source:'演示数据' }
+    stocks: [],
+    overall_analysis: { overall_score:null, overall_risk:'待补充', data_source:'暂无真实分析数据' }
   }));
 
   progress.style.display = 'none';
 
-  if(!data || !data.stocks) {
+  if(!data || !Array.isArray(data.stocks)) {
     grid.innerHTML = '<div class="empty-state">分析失败，请检查后端连接</div>';
+    return;
+  }
+
+  if(!data.stocks.length) {
+    grid.innerHTML = '<div class="empty-state">当前暂无可展示的真实分析结果。已停用模拟评分，请等待真实因子模型补齐。</div>';
     return;
   }
 
@@ -1778,6 +1733,28 @@ function signalClass(sig) {
 function renderAnalysisCards(stocks) {
   const grid = document.getElementById('analysis-grid');
   grid.innerHTML = stocks.map(s => {
+    if(s.analysis_status === 'unavailable') {
+      return `
+      <div class="analysis-card" onclick="showDetail('${s.stock_code}')">
+        <div class="analysis-card-header">
+          <div>
+            <div class="analysis-stock-name">${s.stock_name||s.stock_code}</div>
+            <div class="analysis-stock-code">${s.stock_code}</div>
+          </div>
+          <div class="analysis-score score-mid">--</div>
+        </div>
+        <div class="analysis-card-body">
+          <div class="empty-state" style="margin:0">${s.analysis_message || '暂无真实分析结果'}</div>
+        </div>
+        <div class="analysis-card-footer">
+          <span class="risk-label risk-mid">${s.risk_level||'待补充'}</span>
+          <button class="detail-btn" onclick="event.stopPropagation();showDetail('${s.stock_code}')">
+            查看详情 →
+          </button>
+        </div>
+      </div>`;
+    }
+
     const sc = s.algorithm_scores || {};
     const total = s.comprehensive_score || 2.5;
     const dims = Object.entries(DIM_NAMES).map(([k,name])=>{
@@ -1968,7 +1945,7 @@ async function loadPriceHistory(code, name) {
 
   let data = state.priceHistory[code];
   if(!data) {
-    data = await apiFetch('/api/price_history/'+code, ()=>getMockPriceHistory(code));
+    data = await apiFetch('/api/price_history/'+code, ()=>({ stock_code: code, price_history: [], data_source: '暂无真实数据' }));
     if(data) state.priceHistory[code] = data;
   }
   if(!data || !data.price_history) return;
@@ -2471,7 +2448,7 @@ function buildPdfReportNode(today) {
       <td style="padding:8px 10px;border:1px solid #d0d7de;text-align:right">${fmt.num(item.amount)} 股</td>
       <td style="padding:8px 10px;border:1px solid #d0d7de;text-align:right">${fmt.money(item.cost_price)}</td>
       <td style="padding:8px 10px;border:1px solid #d0d7de;text-align:right">${fmt.money(item.current_price)}</td>
-      <td style="padding:8px 10px;border:1px solid #d0d7de;text-align:right;color:${item.profit_loss >= 0 ? '#d1242f' : '#1a7f37'}">${fmt.money(item.profit_loss)} (${fmt.pct(item.profit_loss_pct)})</td>
+      <td style="padding:8px 10px;border:1px solid #d0d7de;text-align:right;color:${item.profit_loss == null ? '#57606a' : (item.profit_loss >= 0 ? '#d1242f' : '#1a7f37')}">${fmt.money(item.profit_loss)} (${fmt.pct(item.profit_loss_pct)})</td>
     </tr>`).join('');
 
   const stepNames = ['第0步：强制长期记忆检索','第1步：深度复盘','第2步：误差分析','第3步：明日预测','第4步：投资计划','第5步：风险控制','第6步：其他推荐'];

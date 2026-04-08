@@ -7,11 +7,10 @@
 
 import json
 import os
-import random
 import time
 import urllib.parse
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Lock
 
@@ -35,6 +34,10 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
     positions = []
     price_cache = {}
     cache_timeout = 60  # 秒
+    provider_lock = Lock()
+    shared_data_provider = None
+    shared_algorithm_engine = None
+    provider_signature = None
     DEFAULT_POSITIONS = [
         {
             "code": "601868.SH",
@@ -64,17 +67,13 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
         self.use_real_data = True
+        self.allow_mock_data = (os.getenv("ENABLE_MOCK_DATA") or "").strip() == "1"
         self.tushare_token = (os.getenv("TUSHARE_TOKEN") or "").strip()
 
         if not self.tushare_token:
-            print("⚠️ 未检测到环境变量 TUSHARE_TOKEN，将以模拟数据模式启动。")
+            print("⚠️ 未检测到环境变量 TUSHARE_TOKEN，将优先尝试其他真实数据源，不再自动回退模拟数据。")
 
-        self.data_provider = get_data_provider(
-            use_real_data=self.use_real_data,
-            token=self.tushare_token,
-        )
-        self.algorithm_engine = RealAlgorithmEngine(self.data_provider)
-
+        self._ensure_provider_store()
         self._ensure_position_store()
         self.positions = self.__class__.positions
         self.price_cache = self.__class__.price_cache
@@ -218,31 +217,37 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
         positions_with_prices = []
 
         for pos in self.positions:
-            current_price = self._get_current_price(pos["code"])
-            position_value = pos["amount"] * current_price
-            cost_value = pos["amount"] * pos["cost_price"]
-            profit_loss = position_value - cost_value
-            profit_loss_pct = (profit_loss / cost_value * 100) if cost_value > 0 else 0
+            raw_price = self._get_current_price(pos["code"])
+            try:
+                current_price = round(float(raw_price), 2) if raw_price not in (None, "") else None
+            except (TypeError, ValueError):
+                current_price = None
+
+            cost_value = round(pos["amount"] * pos["cost_price"], 2)
+            position_value = round(pos["amount"] * current_price, 2) if current_price is not None else None
+            profit_loss = round(position_value - cost_value, 2) if position_value is not None else None
+            profit_loss_pct = round(profit_loss / cost_value * 100, 2) if profit_loss is not None and cost_value > 0 else None
 
             position_data = {
                 **pos,
                 "current_price": current_price,
-                "position_value": round(position_value, 2),
-                "cost_value": round(cost_value, 2),
-                "profit_loss": round(profit_loss, 2),
-                "profit_loss_pct": round(profit_loss_pct, 2),
+                "position_value": position_value,
+                "cost_value": cost_value,
+                "profit_loss": profit_loss,
+                "profit_loss_pct": profit_loss_pct,
                 "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             positions_with_prices.append(position_data)
 
-        total_value = sum(item["position_value"] for item in positions_with_prices)
-        total_cost = sum(item["cost_value"] for item in positions_with_prices)
-        total_profit = sum(item["profit_loss"] for item in positions_with_prices)
+        total_value = sum(item["position_value"] or 0 for item in positions_with_prices)
+        total_cost = sum(item["cost_value"] or 0 for item in positions_with_prices)
+        total_profit = sum(item["profit_loss"] or 0 for item in positions_with_prices)
         total_profit_pct = (total_profit / total_cost * 100) if total_cost > 0 else 0
 
         response = {
             "overview": {
                 "total_positions": len(positions_with_prices),
+                "priced_positions": sum(1 for item in positions_with_prices if item["current_price"] is not None),
                 "total_value": round(total_value, 2),
                 "total_cost": round(total_cost, 2),
                 "total_profit": round(total_profit, 2),
@@ -430,10 +435,16 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             for pos in self.positions:
                 try:
                     analysis = self.algorithm_engine.analyze_stock(pos["code"])
+                    raw_price = analysis.get("current_price")
+                    try:
+                        current_price = float(raw_price) if raw_price not in (None, "") else None
+                    except (TypeError, ValueError):
+                        current_price = None
+
                     analysis["position_info"] = {
                         "amount": pos["amount"],
                         "cost_price": pos["cost_price"],
-                        "position_value": pos["amount"] * analysis.get("current_price", 0),
+                        "position_value": round(pos["amount"] * current_price, 2) if current_price is not None else None,
                         "type": pos["type"],
                         "industry": pos.get("industry", ""),
                     }
@@ -499,9 +510,6 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                                     "pct_chg": item.get("pct_chg", 0),
                                 }
                             )
-
-            if not price_history:
-                price_history = self._generate_mock_price_history(stock_code)
 
             self.send_json_response(
                 {
@@ -762,6 +770,24 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }, 500)
 
+    def _ensure_provider_store(self):
+        """确保共享数据源仅初始化一次，并在 Token 变化后可刷新"""
+        cls = self.__class__
+        provider_signature = (self.use_real_data, self.tushare_token, self.allow_mock_data)
+
+        with cls.provider_lock:
+            if cls.shared_data_provider is None or cls.provider_signature != provider_signature:
+                cls.shared_data_provider = get_data_provider(
+                    use_real_data=self.use_real_data,
+                    token=self.tushare_token,
+                    enable_mock=self.allow_mock_data,
+                )
+                cls.shared_algorithm_engine = RealAlgorithmEngine(cls.shared_data_provider)
+                cls.provider_signature = provider_signature
+
+        self.data_provider = cls.shared_data_provider
+        self.algorithm_engine = cls.shared_algorithm_engine
+
     def _ensure_position_store(self):
         """确保持仓存储已初始化"""
         cls = self.__class__
@@ -909,9 +935,37 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             return True
         return False
 
+    def _get_last_known_price(self, stock_code):
+        """获取最近一次可信价格（缓存优先，其次为持仓内已保存价格）"""
+        cache_entry = self.price_cache.get(stock_code)
+        if isinstance(cache_entry, dict):
+            price = cache_entry.get("price")
+            if price not in (None, ""):
+                try:
+                    return round(float(price), 2)
+                except (TypeError, ValueError):
+                    pass
+
+        stored = next(
+            (
+                item.get("current_price")
+                for item in self.positions
+                if item.get("code") == stock_code and item.get("current_price") not in (None, "")
+            ),
+            None,
+        )
+        if stored in (None, ""):
+            return None
+        try:
+            return round(float(stored), 2)
+        except (TypeError, ValueError):
+            return None
+
     def _get_current_price(self, stock_code, force_update=False):
-        """获取当前价格（带缓存）"""
+        """获取当前价格（带缓存，不再生成模拟价格）"""
         cache_key = stock_code
+        last_known_price = self._get_last_known_price(stock_code)
+
         if not force_update and cache_key in self.price_cache:
             cache_entry = self.price_cache[cache_key]
             if time.time() - cache_entry["timestamp"] < self.cache_timeout:
@@ -919,64 +973,19 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
 
         try:
             new_price = self.data_provider.get_stock_realtime_price(stock_code)
-            if new_price is None or new_price <= 0:
-                stored = next((item.get("current_price") for item in self.positions if item.get("code") == stock_code and item.get("current_price")), None)
-                if stored:
-                    new_price = stored
-                else:
-                    price_map = {
-                        "601868.SH": 3.20 + random.uniform(-0.1, 0.1),
-                        "002506.SZ": 2.10 + random.uniform(-0.05, 0.05),
-                        "600821.SH": 4.20 + random.uniform(-0.15, 0.15),
-                        "000001.SH": 3200 + random.uniform(-50, 50),
-                        "399001.SZ": 11000 + random.uniform(-100, 100),
-                        "399006.SZ": 2200 + random.uniform(-30, 30),
-                    }
-                    new_price = price_map.get(stock_code, random.uniform(5.0, 50.0))
+            if new_price in (None, ""):
+                return last_known_price
 
-            rounded_price = round(float(new_price), 2)
+            numeric_price = float(new_price)
+            if numeric_price <= 0:
+                return last_known_price
+
+            rounded_price = round(numeric_price, 2)
             self.price_cache[cache_key] = {"price": rounded_price, "timestamp": time.time()}
             return rounded_price
         except Exception as exc:
             print(f"获取价格 {stock_code} 失败: {exc}")
-            fallback_price = next((item.get("current_price") for item in self.positions if item.get("code") == stock_code and item.get("current_price")), None)
-            if fallback_price:
-                return round(float(fallback_price), 2)
-            return round(random.uniform(1.0, 100.0), 2)
-
-    def _generate_mock_price_history(self, stock_code, days=30):
-        """生成模拟价格历史"""
-        base_price = self._get_current_price(stock_code)
-        history = []
-        current_date = datetime.now()
-
-        for i in range(days):
-            date = (current_date - timedelta(days=days - 1 - i)).strftime("%Y%m%d")
-            if i == 0:
-                open_price = base_price
-            else:
-                open_price = history[-1]["close"]
-
-            daily_change = random.uniform(-0.05, 0.05)
-            close_price = open_price * (1 + daily_change)
-            high_price = max(open_price, close_price) * (1 + random.uniform(0, 0.03))
-            low_price = min(open_price, close_price) * (1 - random.uniform(0, 0.03))
-
-            history.append(
-                {
-                    "date": date,
-                    "open": round(open_price, 2),
-                    "high": round(high_price, 2),
-                    "low": round(low_price, 2),
-                    "close": round(close_price, 2),
-                    "volume": random.randint(1000000, 5000000),
-                    "amount": round(close_price * random.randint(1000000, 5000000), 2),
-                    "change": round(close_price - open_price, 2),
-                    "pct_chg": round(daily_change * 100, 2),
-                }
-            )
-
-        return history
+            return last_known_price
 
     def _get_index_name(self, index_code):
         """获取指数名称"""
@@ -991,15 +1000,32 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
 
     def _get_data_status(self):
         """获取数据状态"""
+        active_provider = self._get_active_provider_name(raw=True)
+        if active_provider in {"Tushare", "AkShare"}:
+            return "real_data_active"
         if self._is_real_data_ready():
-            return "real_data_available"
+            return "real_data_ready"
         if self.use_real_data and not self.tushare_token:
             return "real_data_disabled_no_token"
-        return "mock_data_active"
+        return "real_data_unavailable"
 
-    def _get_active_provider_name(self):
+    def _get_active_provider_name(self, raw=False):
         """获取最近一次成功使用的数据源名称"""
-        return getattr(self.data_provider, "last_successful_provider", None) or "Mock"
+        provider_name = None
+        if hasattr(self.data_provider, "get_active_provider_name"):
+            try:
+                provider_name = self.data_provider.get_active_provider_name()
+            except Exception:
+                provider_name = None
+        if not provider_name:
+            provider_name = getattr(self.data_provider, "last_successful_provider", None)
+        if raw:
+            return provider_name
+        if provider_name:
+            return provider_name
+        if self._is_real_data_ready():
+            return "待首次取数"
+        return "未接入真实数据"
 
     def _get_data_source(self):
         """获取数据源信息"""
@@ -1009,8 +1035,8 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
         if self._is_real_data_ready():
-            return "真实数据"
-        return "模拟数据 / 本地持仓文件"
+            return "真实数据链路已就绪"
+        return "未接入真实数据源"
 
     def log_message(self, format, *args):
         """重写日志输出，减少控制台噪音"""
@@ -1026,7 +1052,7 @@ def start_real_data_backend(port=9000):
 
     print("🚀 真实数据后端服务启动中...")
     print(f"📡 服务地址: http://localhost:{port}")
-    print(f"📊 数据模式: {'真实数据' if os.getenv('TUSHARE_TOKEN') else '模拟数据'}")
+    print("📊 数据模式: 真实数据优先（默认禁用 Mock 回退）")
     print(f"📁 持仓存储: {RealDataBackendHandler.POSITIONS_FILE}")
     print(f"⏰ 启动时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("\n📋 可用 API 端点:")
@@ -1061,6 +1087,6 @@ if __name__ == "__main__":
     if not tushare_token:
         print("⚠️ 警告: 未在环境变量中检测到 Tushare Pro API Token")
         print("💡 提示: 请先执行 export TUSHARE_TOKEN=您的Token")
-        print("📊 当前将以模拟数据模式启动，待环境变量配置完成后再切换到真实数据")
+        print("📊 当前将优先尝试 AkShare 等真实数据源，且不会自动回退到模拟数据")
 
     start_real_data_backend()
