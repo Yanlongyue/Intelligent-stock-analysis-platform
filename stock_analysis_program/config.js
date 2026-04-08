@@ -9,7 +9,7 @@ window.APP_CONFIG = {
         //   1) 直接填写：production: 'https://xxxx.ngrok-free.app'
         //   2) 固定域名（推荐长期使用）：production: 'https://api.stock-analysis.example.com'
         //   3) 留空：通过 URL 参数 ?api=https://xxx 临时指定
-        production: 'https://firm-event-rating-five.trycloudflare.com',
+        production: 'http://101.133.150.164:9000',
         // 是否允许通过 URL 参数 ?api=xxx 覆盖配置
         allowQueryOverride: true,
         // 公网穿透工具配置说明
