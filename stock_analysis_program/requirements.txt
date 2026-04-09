@@ -22,6 +22,7 @@ APScheduler>=3.10.0     # 高级调度
 
 # 数据存储
 sqlite3                  # 内置数据库
+pymysql>=1.1.0          # MySQL 客户端
 openpyxl>=3.1.0         # Excel处理
 
 # Web服务（可选）

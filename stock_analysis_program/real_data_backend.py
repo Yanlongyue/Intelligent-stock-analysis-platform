@@ -22,6 +22,7 @@ from algorithm_config import (
 )
 from real_algorithm_engine import RealAlgorithmEngine
 from real_data_provider import get_data_provider
+from db_manager import get_db
 
 
 class RealDataBackendHandler(BaseHTTPRequestHandler):
@@ -75,6 +76,7 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
 
         self._ensure_provider_store()
         self._ensure_position_store()
+        self._ensure_db_store()
         self.positions = self.__class__.positions
         self.price_cache = self.__class__.price_cache
         self.cache_timeout = self.__class__.cache_timeout
@@ -117,6 +119,8 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             self.handle_limit_list_d(query_params)
         elif path == "/api/news":
             self.handle_news(query_params)
+        elif path == "/api/db_stats":
+            self.handle_db_stats()
         else:
             self.send_json_response(
                 {
@@ -280,6 +284,12 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                 self.positions.append(position)
                 self._save_positions_to_disk_locked()
 
+            # 同步写入 MySQL
+            try:
+                get_db().upsert_holding(position)
+            except Exception as e:
+                print(f"⚠️ 写入 MySQL 失败（不影响本地存储）: {e}")
+
             self.price_cache.pop(code, None)
             self.send_json_response(
                 {
@@ -342,6 +352,15 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                 self.positions[index] = position
                 self._save_positions_to_disk_locked()
 
+            # 同步更新 MySQL
+            try:
+                db = get_db()
+                if target_code != new_code:
+                    db.delete_holding(target_code)
+                db.upsert_holding(position)
+            except Exception as e:
+                print(f"⚠️ 更新 MySQL 失败（不影响本地存储）: {e}")
+
             self.price_cache.pop(target_code, None)
             self.price_cache.pop(new_code, None)
             self.send_json_response(
@@ -390,6 +409,12 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                 deleted = self.positions.pop(index)
                 self._save_positions_to_disk_locked()
 
+            # 同步删除 MySQL
+            try:
+                get_db().delete_holding(target_code)
+            except Exception as e:
+                print(f"⚠️ 删除 MySQL 记录失败（不影响本地存储）: {e}")
+
             self.price_cache.pop(target_code, None)
             self.send_json_response(
                 {
@@ -410,12 +435,20 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             )
 
     def handle_analyze_stock(self, stock_code):
-        """分析指定股票"""
+        """分析指定股票，并将结果存入 MySQL"""
         try:
             analysis_result = self.algorithm_engine.analyze_stock(stock_code)
             stock_info = next((pos for pos in self.positions if pos["code"] == stock_code), None)
             if stock_info:
                 analysis_result["stock_info"] = stock_info
+
+            # 异步保存分析结果到 MySQL（不影响响应速度）
+            try:
+                name = (stock_info or {}).get("name", stock_code)
+                get_db().save_analysis_result(stock_code, name, analysis_result)
+            except Exception as e:
+                print(f"⚠️ 保存分析结果到 MySQL 失败: {e}")
+
             self.send_json_response(analysis_result)
         except Exception as exc:
             self.send_json_response(
@@ -489,10 +522,17 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             )
 
     def handle_price_history(self, stock_code):
-        """获取价格历史"""
+        """获取价格历史（优先读 MySQL，若无数据再调 API 并写入 MySQL）"""
         try:
+            db = get_db()
             price_history = []
-            if hasattr(self.data_provider, "get_daily_quotes"):
+
+            # 先尝试从 MySQL 读取
+            if db.available:
+                price_history = db.get_price_history(stock_code, days=60)
+
+            # MySQL 没有数据，则从 API 获取
+            if not price_history and hasattr(self.data_provider, "get_daily_quotes"):
                 history_data = self.data_provider.get_daily_quotes(stock_code)
                 if history_data:
                     for item in history_data:
@@ -510,6 +550,16 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                                     "pct_chg": item.get("pct_chg", 0),
                                 }
                             )
+                    # 存入 MySQL
+                    if db.available and history_data:
+                        try:
+                            saved = db.save_daily_quotes(
+                                stock_code, history_data,
+                                source=self._get_active_provider_name() or "AkShare"
+                            )
+                            print(f"✅ [{stock_code}] 存入 MySQL {saved} 条日线数据")
+                        except Exception as e:
+                            print(f"⚠️ 存入 MySQL 失败: {e}")
 
             self.send_json_response(
                 {
@@ -668,6 +718,13 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             }
         )
 
+    def handle_db_stats(self):
+        """获取 MySQL 数据库统计信息"""
+        db = get_db()
+        stats = db.get_db_stats()
+        stats["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.send_json_response(stats)
+
     def handle_daily_basic(self, stock_code, query_params=None):
         """获取股票每日基础指标"""
         try:
@@ -797,16 +854,38 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
 
             os.makedirs(os.path.dirname(cls.POSITIONS_FILE), exist_ok=True)
 
-            if not os.path.exists(cls.POSITIONS_FILE):
-                cls.positions[:] = deepcopy(cls.DEFAULT_POSITIONS)
-                self._save_positions_to_disk_locked()
-            else:
+            # 优先从 MySQL 加载持仓
+            db = get_db()
+            db_positions = db.get_holdings() if db.available else []
+
+            if db_positions:
+                cls.positions[:] = db_positions
+                print(f"✅ 从 MySQL 加载了 {len(db_positions)} 条持仓记录")
+            elif os.path.exists(cls.POSITIONS_FILE):
+                # MySQL 没有数据，从 JSON 文件加载并迁移到 MySQL
                 cls.positions[:] = self._load_positions_from_disk_locked()
                 if not cls.positions:
                     cls.positions[:] = deepcopy(cls.DEFAULT_POSITIONS)
-                    self._save_positions_to_disk_locked()
+                self._save_positions_to_disk_locked()
+                # 将 JSON 持仓迁移写入 MySQL
+                if db.available:
+                    count = db.import_holdings_from_list(cls.positions)
+                    print(f"✅ 已将 {count} 条持仓迁移到 MySQL")
+            else:
+                cls.positions[:] = deepcopy(cls.DEFAULT_POSITIONS)
+                self._save_positions_to_disk_locked()
+                if db.available:
+                    db.import_holdings_from_list(cls.positions)
 
             cls.positions_initialized = True
+
+    def _ensure_db_store(self):
+        """初始化 MySQL 数据库连接（仅执行一次）"""
+        db = get_db()
+        if db.available:
+            print("✅ MySQL 数据库已就绪")
+        else:
+            print("⚠️ MySQL 不可用，数据将仅存储在本地文件")
 
     def _load_positions_from_disk_locked(self):
         """从磁盘读取持仓数据（需在锁内调用）"""
