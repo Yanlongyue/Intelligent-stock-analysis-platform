@@ -620,7 +620,7 @@ class AkShareDataProvider:
     
     def get_index_daily(self, ts_code, start_date=None, end_date=None):
         """
-        获取指数日线数据
+        获取指数日线数据 - 使用国内可访问的接口
         
         Args:
             ts_code: 指数代码（如 000001.SH）
@@ -640,45 +640,69 @@ class AkShareDataProvider:
         try:
             code = self._normalize_code(ts_code)
             
-            # 东方财富的指数日线接口
-            df = self.ak.index_zh_a_hist(
-                symbol=code,
-                period="daily",
-                start_date=start_date or (datetime.now() - timedelta(days=30)).strftime("%Y%m%d"),
-                end_date=end_date or datetime.now().strftime("%Y%m%d")
-            )
-            
-            if df is None or df.empty:
-                # 尝试使用 stock_zh_index_spot 获取实时指数数据
-                try:
-                    spot_df = self.ak.stock_zh_index_spot()
-                    if spot_df is not None and not spot_df.empty:
-                        # 找到对应的指数
-                        index_code = code  # 如 '000001'
-                        for _, row in spot_df.iterrows():
-                            if row.get('代码') == index_code:
-                                result = [{
-                                    "trade_date": datetime.now().strftime("%Y-%m-%d"),
-                                    "close": float(row.get("最新价", 0) or 0),
-                                    "pct_chg": float(row.get("涨跌幅", 0) or 0)
-                                }]
-                                self._save_to_cache(cache_key, result)
-                                return result
-                except Exception as spot_e:
-                    print(f"⚠️ 指数实时数据接口失败: {spot_e}")
+            # 方案1: 使用 stock_zh_index_daily_em 获取指数日线（东方财富，国内可访问）
+            try:
+                # 转换指数代码格式：000001.SH -> sh000001
+                if code.endswith('.SH'):
+                    em_code = f"sh{code[:-3]}"
+                elif code.endswith('.SZ'):
+                    em_code = f"sz{code[:-3]}"
+                else:
+                    em_code = code
                 
-                return None
+                df = self.ak.stock_zh_index_daily_em(symbol=em_code)
+                if df is not None and not df.empty:
+                    result = []
+                    for _, row in df.iterrows():
+                        result.append({
+                            "trade_date": row.get("日期", ""),
+                            "close": float(row.get("收盘", 0) or row.get("收盘价", 0) or 0),
+                            "pct_chg": float(row.get("涨跌幅", 0) or 0)
+                        })
+                    self._save_to_cache(cache_key, result)
+                    print(f"✅ 指数数据获取成功（stock_zh_index_daily_em）")
+                    return result
+            except Exception as em_e:
+                print(f"⚠️ stock_zh_index_daily_em 接口失败: {em_e}")
             
-            result = []
-            for _, row in df.iterrows():
-                result.append({
-                    "trade_date": row.get("日期", ""),
-                    "close": float(row.get("收盘", 0) or 0),
-                    "pct_chg": float(row.get("涨跌幅", 0) or 0)
-                })
+            # 方案2: 使用 stock_zh_index_spot_em 获取实时指数行情
+            try:
+                spot_df = self.ak.stock_zh_index_spot_em()
+                if spot_df is not None and not spot_df.iterrows:
+                    # 找到对应的指数
+                    for _, row in spot_df.iterrows():
+                        if row.get('代码') == code or row.get('指数代码') == code:
+                            result = [{
+                                "trade_date": datetime.now().strftime("%Y-%m-%d"),
+                                "close": float(row.get("最新价", 0) or row.get("收盘", 0) or 0),
+                                "pct_chg": float(row.get("涨跌幅", 0) or 0)
+                            }]
+                            self._save_to_cache(cache_key, result)
+                            print(f"✅ 指数数据获取成功（实时行情）")
+                            return result
+            except Exception as spot_e:
+                print(f"⚠️ stock_zh_index_spot_em 接口失败: {spot_e}")
             
-            self._save_to_cache(cache_key, result)
-            return result
+            # 方案3: 使用 index_global_spot_em 获取全球指数
+            try:
+                global_df = self.ak.index_global_spot_em()
+                if global_df is not None and not global_df.empty:
+                    # 查找对应的指数
+                    for _, row in global_df.iterrows():
+                        if row.get('代码') == code or row.get('指数名称', '').find(code) != -1:
+                            result = [{
+                                "trade_date": datetime.now().strftime("%Y-%m-%d"),
+                                "close": float(row.get("最新价", 0) or 0),
+                                "pct_chg": float(row.get("涨跌幅", 0) or 0)
+                            }]
+                            self._save_to_cache(cache_key, result)
+                            print(f"✅ 指数数据获取成功（全球指数）")
+                            return result
+            except Exception as global_e:
+                print(f"⚠️ index_global_spot_em 接口失败: {global_e}")
+            
+            print(f"❌ 所有指数数据接口均失败")
+            return None
             
         except Exception as e:
             print(f"AkShare获取指数数据失败 {ts_code}: {e}")
@@ -686,9 +710,93 @@ class AkShareDataProvider:
             print(f"详细错误: {traceback.format_exc()}")
             return None
     
+    def get_market_overview(self):
+        """
+        获取市场概况 - 使用国内可访问的接口
+        
+        Returns:
+            市场概况数据
+        """
+        if not self.available:
+            return None
+        
+        cache_key = f"market_overview"
+        if self._get_from_cache(cache_key):
+            return self._get_from_cache(cache_key)
+        
+        try:
+            # 获取主要指数行情
+            indices = ["000001.SH", "399001.SZ", "399006.SZ"]  # 上证指数、深证成指、创业板指
+            
+            index_data = []
+            for idx in indices:
+                try:
+                    data = self.get_index_daily(idx)
+                    if data and len(data) > 0:
+                        latest = data[-1] if isinstance(data, list) else data
+                        index_data.append({
+                            "code": idx,
+                            "close": latest.get("close", 0),
+                            "pct_chg": latest.get("pct_chg", 0)
+                        })
+                except Exception as idx_e:
+                    print(f"⚠️ 获取指数 {idx} 失败: {idx_e}")
+            
+            # 获取市场资金流向（国内接口）
+            try:
+                # 使用 stock_market_fund_flow 获取市场资金流向
+                flow_df = self.ak.stock_market_fund_flow()
+                if flow_df is not None and not flow_df.empty:
+                    market_flow = {
+                        "main_net_in": float(flow_df.iloc[0].get("主力净流入", 0) or 0),
+                        "large_net_in": float(flow_df.iloc[0].get("超大单净流入", 0) or 0),
+                        "big_net_in": float(flow_df.iloc[0].get("大单净流入", 0) or 0),
+                        "medium_net_in": float(flow_df.iloc[0].get("中单净流入", 0) or 0),
+                        "small_net_in": float(flow_df.iloc[0].get("小单净流入", 0) or 0)
+                    }
+                else:
+                    market_flow = {}
+            except Exception as flow_e:
+                print(f"⚠️ 市场资金流向接口失败: {flow_e}")
+                market_flow = {}
+            
+            # 获取市场活跃度
+            try:
+                # 使用 stock_market_activity_legu 获取市场活跃度
+                activity_df = self.ak.stock_market_activity_legu()
+                if activity_df is not None and not activity_df.empty:
+                    market_activity = {
+                        "total_stocks": int(activity_df.iloc[0].get("股票总数", 0) or 0),
+                        "rising_stocks": int(activity_df.iloc[0].get("上涨股票数", 0) or 0),
+                        "falling_stocks": int(activity_df.iloc[0].get("下跌股票数", 0) or 0),
+                        "flat_stocks": int(activity_df.iloc[0].get("平盘股票数", 0) or 0)
+                    }
+                else:
+                    market_activity = {}
+            except Exception as activity_e:
+                print(f"⚠️ 市场活跃度接口失败: {activity_e}")
+                market_activity = {}
+            
+            result = {
+                "indices": index_data,
+                "market_flow": market_flow,
+                "market_activity": market_activity,
+                "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            self._save_to_cache(cache_key, result)
+            print(f"✅ 市场概况数据获取成功")
+            return result
+            
+        except Exception as e:
+            print(f"AkShare获取市场概况失败: {e}")
+            import traceback
+            print(f"详细错误: {traceback.format_exc()}")
+            return None
+    
     def get_north_money_flow(self, start_date=None, end_date=None):
         """
-        获取北向资金流向数据
+        获取北向资金流向数据 - 使用国内可访问的接口
         
         Args:
             start_date: 开始日期
@@ -705,40 +813,62 @@ class AkShareDataProvider:
             return self._get_from_cache(cache_key)
         
         try:
-            # 使用 stock_hsgt_north_net_flow_in_em 接口（东方财富）
-            df = self.ak.stock_hsgt_north_net_flow_in_em(
-                symbol="北向资金"
-            )
+            # 方案1: 使用 stock_hsgt_hold_stock_em 获取北向持股数据（国内可访问）
+            try:
+                hsgt_df = self.ak.stock_hsgt_hold_stock_em(symbol="北向资金")
+                if hsgt_df is not None and not hsgt_df.empty:
+                    # 计算总持股金额作为北向资金指标
+                    total_value = hsgt_df['持股总市值'].astype(float).sum() if '持股总市值' in hsgt_df.columns else 0.0
+                    
+                    result = {
+                        "trade_date": datetime.now().strftime("%Y-%m-%d"),
+                        "net_amount": total_value,  # 使用总市值作为指标
+                        "total_holdings": len(hsgt_df),  # 持股数量
+                        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    self._save_to_cache(cache_key, result)
+                    print(f"✅ 北向资金数据获取成功（持股统计）")
+                    return result
+            except Exception as hsgt_e:
+                print(f"⚠️ stock_hsgt_hold_stock_em 接口失败: {hsgt_e}")
             
-            if df is None or df.empty:
-                # 尝试使用 stock_hsgt_hold_stock_em 获取北向持股数据
-                try:
-                    hsgt_df = self.ak.stock_hsgt_hold_stock_em(symbol="北向资金")
-                    if hsgt_df is not None and not hsgt_df.empty:
-                        # 构造一个简单的结果
-                        result = {
-                            "trade_date": datetime.now().strftime("%Y-%m-%d"),
-                            "net_amount": 0.0,  # 无法获取净流入金额
-                            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }
-                        self._save_to_cache(cache_key, result)
-                        return result
-                except Exception as hsgt_e:
-                    print(f"⚠️ 备用北向资金接口失败: {hsgt_e}")
-                
-                return None
+            # 方案2: 使用 stock_hsgt_individual_em 获取北向个股明细
+            try:
+                individual_df = self.ak.stock_hsgt_individual_em(symbol="北向")
+                if individual_df is not None and not individual_df.empty:
+                    # 获取最新一天的数据
+                    latest_date = individual_df.iloc[0]['日期'] if '日期' in individual_df.columns else datetime.now().strftime("%Y-%m-%d")
+                    net_amount = float(individual_df.iloc[0].get('净买入', 0) or 0) if '净买入' in individual_df.columns else 0.0
+                    
+                    result = {
+                        "trade_date": latest_date,
+                        "net_amount": net_amount,
+                        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    self._save_to_cache(cache_key, result)
+                    print(f"✅ 北向资金数据获取成功（个股明细）")
+                    return result
+            except Exception as ind_e:
+                print(f"⚠️ stock_hsgt_individual_em 接口失败: {ind_e}")
             
-            # 返回最新一天的数据
-            latest = df.iloc[0] if len(df) > 0 else None
-            if latest is not None:
-                result = {
-                    "trade_date": latest.get("日期", ""),
-                    "net_amount": float(latest.get("当日净流入", 0) or 0),
-                    "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                self._save_to_cache(cache_key, result)
-                return result
+            # 方案3: 使用 stock_hsgt_board_rank_em 获取板块排行
+            try:
+                board_df = self.ak.stock_hsgt_board_rank_em()
+                if board_df is not None and not board_df.empty:
+                    # 构造一个简单的结果
+                    result = {
+                        "trade_date": datetime.now().strftime("%Y-%m-%d"),
+                        "net_amount": 0.0,  # 无法获取净流入金额
+                        "board_count": len(board_df),  # 板块数量
+                        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    self._save_to_cache(cache_key, result)
+                    print(f"✅ 北向资金数据获取成功（板块排行）")
+                    return result
+            except Exception as board_e:
+                print(f"⚠️ stock_hsgt_board_rank_em 接口失败: {board_e}")
             
+            print(f"❌ 所有北向资金接口均失败")
             return None
             
         except Exception as e:
