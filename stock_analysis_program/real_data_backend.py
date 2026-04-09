@@ -12,7 +12,13 @@ import urllib.parse
 from copy import deepcopy
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 from threading import Lock
+
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    """多线程 HTTP Server，避免单个慢请求阻塞其他请求"""
+    daemon_threads = True  # 主进程退出时自动清理子线程
 
 from algorithm_config import (
     ALGORITHM_WEIGHTS,
@@ -1328,13 +1334,14 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
 
 
 def start_real_data_backend(port=9000):
-    """启动真实数据后端服务"""
+    """启动真实数据后端服务（多线程模式）"""
     server_address = ("", port)
-    httpd = HTTPServer(server_address, RealDataBackendHandler)
+    httpd = ThreadingHTTPServer(server_address, RealDataBackendHandler)
 
     print("🚀 真实数据后端服务启动中...")
     print(f"📡 服务地址: http://localhost:{port}")
     print("📊 数据模式: 真实数据优先（默认禁用 Mock 回退）")
+    print("🔀 运行模式: 多线程（ThreadingHTTPServer）")
     print(f"📁 持仓存储: {RealDataBackendHandler.POSITIONS_FILE}")
     print(f"⏰ 启动时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("\n📋 可用 API 端点:")
