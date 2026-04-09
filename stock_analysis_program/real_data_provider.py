@@ -564,9 +564,9 @@ class AkShareDataProvider:
             # 方案1: 尝试使用 stock_zh_a_hist_tx (腾讯财经接口，通常更稳定)
             try:
                 print(f"🔄 尝试方案1: 腾讯财经接口 {ts_code}")
+                # 腾讯财经接口不需要 period 参数，直接获取日线数据
                 hist_df = self.ak.stock_zh_a_hist_tx(
                     symbol=code,
-                    period="daily",
                     start_date=start_date or (datetime.now() - timedelta(days=30)).strftime("%Y%m%d"),
                     end_date=end_date or datetime.now().strftime("%Y%m%d")
                 )
@@ -1026,11 +1026,123 @@ class AkShareDataProvider:
             return None
     
     def get_stock_realtime_price(self, ts_code):
-        """获取实时价格（通过最新日线数据）"""
-        daily_data = self.get_daily_quotes(ts_code, start_date=None, end_date=None)
-        if daily_data and len(daily_data) > 0:
-            latest = daily_data[-1]
-            return latest.get("close")
+        """获取实时价格（优先使用实时快照）"""
+        if not self.available:
+            return None
+        
+        try:
+            code = self._normalize_code(ts_code)
+            
+            # 方案1: 使用 stock_zh_a_spot_em 获取全市场实时行情
+            try:
+                spot_df = self.ak.stock_zh_a_spot_em()
+                if spot_df is not None and not spot_df.empty:
+                    target_row = spot_df[spot_df['代码'] == code]
+                    if not target_row.empty:
+                        price = float(target_row.iloc[0].get("最新价", 0) or 0)
+                        if price > 0:
+                            print(f"✅ [{ts_code}] 实时价格: {price} (来自 stock_zh_a_spot_em)")
+                            return price
+            except Exception as e:
+                print(f"⚠️ [{ts_code}] 实时快照接口失败: {e}")
+            
+            # 方案2: 回退到日线数据
+            daily_data = self.get_daily_quotes(ts_code, start_date=None, end_date=None)
+            if daily_data and len(daily_data) > 0:
+                latest = daily_data[-1]
+                return latest.get("close")
+                
+        except Exception as e:
+            print(f"⚠️ [{ts_code}] 获取实时价格失败: {e}")
+        
+        return None
+    
+    def get_stock_realtime_snapshot(self, ts_code):
+        """
+        获取个股实时快照（含涨跌幅、成交量等完整信息）
+        
+        Args:
+            ts_code: 股票代码
+            
+        Returns:
+            实时快照数据字典
+        """
+        if not self.available:
+            return None
+        
+        try:
+            code = self._normalize_code(ts_code)
+            
+            # 使用 stock_zh_a_spot_em 获取实时行情
+            spot_df = self.ak.stock_zh_a_spot_em()
+            if spot_df is not None and not spot_df.empty:
+                target_row = spot_df[spot_df['代码'] == code]
+                if not target_row.empty:
+                    row = target_row.iloc[0]
+                    return {
+                        "code": ts_code,
+                        "name": row.get("名称", ""),
+                        "current_price": float(row.get("最新价", 0) or 0),
+                        "open": float(row.get("今开", 0) or 0),
+                        "high": float(row.get("最高", 0) or 0),
+                        "low": float(row.get("最低", 0) or 0),
+                        "pre_close": float(row.get("昨收", 0) or 0),
+                        "change": float(row.get("涨跌额", 0) or 0),
+                        "pct_chg": float(row.get("涨跌幅", 0) or 0),
+                        "volume": float(row.get("成交量", 0) or 0),
+                        "amount": float(row.get("成交额", 0) or 0),
+                        "turnover": float(row.get("换手率", 0) or 0),
+                        "pe": float(row.get("市盈率-动态", 0) or row.get("市盈率", 0) or 0),
+                        "pb": float(row.get("市净率", 0) or 0),
+                        "market_cap": float(row.get("总市值", 0) or 0),
+                        "circ_cap": float(row.get("流通市值", 0) or 0),
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+        except Exception as e:
+            print(f"⚠️ [{ts_code}] 获取实时快照失败: {e}")
+        
+        return None
+    
+    def get_stock_moneyflow_realtime(self, ts_code):
+        """
+        获取个股实时资金流向
+        
+        Args:
+            ts_code: 股票代码
+            
+        Returns:
+            资金流向数据
+        """
+        if not self.available:
+            return None
+        
+        try:
+            code = self._normalize_code(ts_code)
+            
+            # 使用 stock_individual_fund_flow 获取个股资金流向
+            try:
+                flow_df = self.ak.stock_individual_fund_flow(symbol=code, market="sh" if ts_code.endswith('.SH') else "sz")
+                if flow_df is not None and not flow_df.empty:
+                    latest = flow_df.iloc[0]
+                    return {
+                        "code": ts_code,
+                        "main_in": float(latest.get("主力净流入", 0) or 0),
+                        "main_in_pct": float(latest.get("主力净流入占比", 0) or 0),
+                        "large_in": float(latest.get("超大单净流入", 0) or 0),
+                        "large_in_pct": float(latest.get("超大单净流入占比", 0) or 0),
+                        "big_in": float(latest.get("大单净流入", 0) or 0),
+                        "big_in_pct": float(latest.get("大单净流入占比", 0) or 0),
+                        "medium_in": float(latest.get("中单净流入", 0) or 0),
+                        "medium_in_pct": float(latest.get("中单净流入占比", 0) or 0),
+                        "small_in": float(latest.get("小单净流入", 0) or 0),
+                        "small_in_pct": float(latest.get("小单净流入占比", 0) or 0),
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+            except Exception as e:
+                print(f"⚠️ [{ts_code}] 个股资金流向接口失败: {e}")
+        except Exception as e:
+            print(f"⚠️ [{ts_code}] 获取资金流向失败: {e}")
+        
         return None
 
 
@@ -1457,6 +1569,44 @@ class FallbackDataProvider:
                     print(f"✅ [news] 使用数据源: AkShare")
                     return result
         
+        return None
+    
+    def get_stock_realtime_snapshot(self, ts_code):
+        """
+        获取个股实时快照（含涨跌幅、资金流向等完整信息）
+        
+        Args:
+            ts_code: 股票代码
+            
+        Returns:
+            实时快照数据
+        """
+        # 优先从 AkShare 获取
+        for provider in self.providers:
+            if isinstance(provider, AkShareDataProvider):
+                result = provider.get_stock_realtime_snapshot(ts_code)
+                if result:
+                    self._mark_success("AkShare", "get_stock_realtime_snapshot")
+                    return result
+        return None
+    
+    def get_stock_moneyflow_realtime(self, ts_code):
+        """
+        获取个股实时资金流向
+        
+        Args:
+            ts_code: 股票代码
+            
+        Returns:
+            资金流向数据
+        """
+        # 优先从 AkShare 获取
+        for provider in self.providers:
+            if isinstance(provider, AkShareDataProvider):
+                result = provider.get_stock_moneyflow_realtime(ts_code)
+                if result:
+                    self._mark_success("AkShare", "get_stock_moneyflow_realtime")
+                    return result
         return None
 
 

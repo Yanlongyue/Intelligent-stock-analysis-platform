@@ -135,6 +135,28 @@
     .type-growth { background: rgba(63,185,80,.15); color: var(--green); }
     .type-concept { background: rgba(188,140,255,.15); color: var(--purple); }
     .profit-cell { font-weight: 600; font-size: 14px; }
+    
+    /* ========== 操作建议标签 ========== */
+    .advice-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+      white-space: nowrap;
+    }
+    .advice-hold { background: rgba(139,148,158,.2); color: var(--text-dim); border: 1px solid rgba(139,148,158,.3); }
+    .advice-add-light { background: rgba(63,185,80,.12); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+    .advice-add-moderate { background: rgba(63,185,80,.18); color: var(--green); border: 1px solid rgba(63,185,80,.4); }
+    .advice-add-heavy { background: rgba(63,185,80,.25); color: var(--green); border: 1px solid rgba(63,185,80,.5); }
+    .advice-reduce-light { background: rgba(248,81,73,.12); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+    .advice-reduce-moderate { background: rgba(248,81,73,.18); color: var(--red); border: 1px solid rgba(248,81,73,.4); }
+    .advice-reduce-heavy { background: rgba(248,81,73,.25); color: var(--red); border: 1px solid rgba(248,81,73,.5); }
+    .advice-clear { background: rgba(248,81,73,.35); color: #ffb4ae; border: 1px solid rgba(248,81,73,.6); }
+    .advice-pct { font-size: 10px; opacity: 0.8; }
+    .advice-reason { 
+      font-size: 10px; color: var(--text-dim); 
+      max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .advice-cell { max-width: 140px; }
+    .current-pct { font-size: 11px; margin-top: 2px; }
     .panel-actions { display: flex; align-items: center; gap: 10px; }
     .subtle-text { font-size: 12px; color: var(--text-dim); }
     .btn-danger { border-color: rgba(248,81,73,.35); color: var(--red); }
@@ -1400,6 +1422,46 @@ function getTypeBadgeClass(type) {
   return m[type] || 'type-value';
 }
 
+function getAdviceBadgeClass(adviceClass) {
+  const m = {
+    'neutral': 'advice-hold',
+    'buy-light': 'advice-add-light',
+    'buy-moderate': 'advice-add-moderate',
+    'buy-heavy': 'advice-add-heavy',
+    'sell-light': 'advice-reduce-light',
+    'sell-moderate': 'advice-reduce-moderate',
+    'sell-heavy': 'advice-reduce-heavy',
+    'sell-clear': 'advice-clear'
+  };
+  return m[adviceClass] || 'advice-hold';
+}
+
+function renderAdviceBadge(tradingAdvice) {
+  if (!tradingAdvice) {
+    return '<span class="advice-badge advice-hold">--</span>';
+  }
+  const label = tradingAdvice.label || '--';
+  const adviceClass = tradingAdvice.class || 'neutral';
+  const pctChg = tradingAdvice.current_pct_chg;
+  const profitPct = tradingAdvice.current_profit_pct;
+  const reason = tradingAdvice.reason || '';
+  
+  let pctHtml = '';
+  if (pctChg !== null && pctChg !== undefined) {
+    const pctColor = pctChg >= 0 ? 'up' : 'down';
+    pctHtml = `<span class="advice-pct ${pctColor}">${pctChg >= 0 ? '+' : ''}${pctChg.toFixed(2)}%</span>`;
+  }
+  
+  return `
+    <div class="advice-cell">
+      <div class="advice-badge ${getAdviceBadgeClass(adviceClass)}">
+        ${label}
+        ${pctHtml}
+      </div>
+      <div class="advice-reason" title="${escapeHtml(reason)}">${escapeHtml(reason)}</div>
+    </div>`;
+}
+
 function renderPositions() {
   const wrap = document.getElementById('positions-wrap');
   if(!state.positions.length) {
@@ -1409,6 +1471,7 @@ function renderPositions() {
 
   const rows = state.positions.map(p => {
     const isActive = state.selectedStock === p.code;
+    const advice = p.trading_advice;
     return `
       <tr class="position-row ${isActive ? 'active' : ''}" onclick="loadPriceHistory('${escapeHtml(p.code)}')">
         <td>
@@ -1418,9 +1481,10 @@ function renderPositions() {
         <td><span class="type-badge ${getTypeBadgeClass(p.type)}">${getTypeLabel(p.type)}</span></td>
         <td>${fmt.num(p.amount)} 股</td>
         <td>${fmt.money(p.cost_price)}</td>
-        <td style="font-weight:600">${fmt.money(p.current_price)}</td>
+        <td style="font-weight:600">${fmt.money(p.current_price)}<br><span class="current-pct ${advice && advice.current_pct_chg >= 0 ? 'up' : 'down'}">${advice && advice.current_pct_chg !== null ? (advice.current_pct_chg >= 0 ? '+' : '') + advice.current_pct_chg.toFixed(2) + '%' : ''}</span></td>
         <td>${fmt.money(p.position_value)}</td>
         <td class="profit-cell ${colorClass(p.profit_loss)}">${fmt.money(p.profit_loss)}<br><span style="font-size:11px">${fmt.pct(p.profit_loss_pct)}</span></td>
+        <td>${renderAdviceBadge(advice)}</td>
         <td>
           <div class="row-actions">
             <button class="row-action-btn" onclick="event.stopPropagation(); openPositionModal('${escapeHtml(p.code)}')">编辑</button>
@@ -1433,7 +1497,7 @@ function renderPositions() {
   wrap.innerHTML = `
     <table class="positions-table">
       <thead><tr>
-        <th>股票</th><th>类型</th><th>持股</th><th>成本</th><th>现价</th><th>市值</th><th>盈亏</th><th style="text-align:right">操作</th>
+        <th>股票</th><th>类型</th><th>持股</th><th>成本</th><th>现价</th><th>市值</th><th>盈亏</th><th>操作建议</th><th style="text-align:right">操作</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;

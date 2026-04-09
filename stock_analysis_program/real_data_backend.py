@@ -23,6 +23,7 @@ from algorithm_config import (
 from real_algorithm_engine import RealAlgorithmEngine
 from real_data_provider import get_data_provider
 from db_manager import get_db
+from technical_advisor import TechnicalAdvisor
 
 
 class RealDataBackendHandler(BaseHTTPRequestHandler):
@@ -217,21 +218,63 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
         self.send_json_response(data)
 
     def handle_get_positions(self):
-        """获取持仓数据"""
+        """获取持仓数据（包含实时价格和操作建议）"""
         positions_with_prices = []
 
         for pos in self.positions:
-            raw_price = self._get_current_price(pos["code"])
+            stock_code = pos["code"]
+            
+            # 1. 获取实时价格（优先使用实时快照）
+            raw_price = self._get_current_price(stock_code)
             try:
                 current_price = round(float(raw_price), 2) if raw_price not in (None, "") else None
             except (TypeError, ValueError):
                 current_price = None
-
+            
+            # 2. 获取实时快照（用于技术分析）
+            snapshot = None
+            try:
+                if hasattr(self.data_provider, "get_stock_realtime_snapshot"):
+                    snapshot = self.data_provider.get_stock_realtime_snapshot(stock_code)
+            except Exception as e:
+                print(f"⚠️ 获取 {stock_code} 快照失败: {e}")
+            
+            # 如果快照获取失败但价格获取成功，构造基本快照
+            if snapshot is None and current_price is not None:
+                snapshot = {
+                    "current_price": current_price,
+                    "pct_chg": 0  # 无法获取涨跌幅时默认为0
+                }
+            
+            # 3. 计算持仓数据
             cost_value = round(pos["amount"] * pos["cost_price"], 2)
             position_value = round(pos["amount"] * current_price, 2) if current_price is not None else None
             profit_loss = round(position_value - cost_value, 2) if position_value is not None else None
             profit_loss_pct = round(profit_loss / cost_value * 100, 2) if profit_loss is not None and cost_value > 0 else None
-
+            
+            # 4. 生成操作建议
+            trading_advice = None
+            if snapshot is not None:
+                try:
+                    advice_result = TechnicalAdvisor.analyze_intraday_trend(
+                        snapshot=snapshot,
+                        cost_price=pos.get("cost_price"),
+                        position_type=pos.get("type", "value")
+                    )
+                    trading_advice = {
+                        "type": advice_result.get("advice_type"),
+                        "label": advice_result.get("advice_label"),
+                        "class": advice_result.get("advice_class"),
+                        "score": advice_result.get("score"),
+                        "reason": advice_result.get("reason"),
+                        "action": advice_result.get("suggested_action", {}),
+                        "current_pct_chg": advice_result.get("current_pct_chg"),
+                        "current_profit_pct": advice_result.get("current_profit_pct")
+                    }
+                except Exception as e:
+                    print(f"⚠️ 生成 {stock_code} 建议失败: {e}")
+            
+            # 5. 组装持仓数据
             position_data = {
                 **pos,
                 "current_price": current_price,
@@ -239,6 +282,8 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                 "cost_value": cost_value,
                 "profit_loss": profit_loss,
                 "profit_loss_pct": profit_loss_pct,
+                "trading_advice": trading_advice,
+                "snapshot": snapshot,  # 保留完整快照供前端使用
                 "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             positions_with_prices.append(position_data)
