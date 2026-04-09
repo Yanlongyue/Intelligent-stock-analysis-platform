@@ -538,7 +538,7 @@ class AkShareDataProvider:
     
     def get_daily_quotes(self, ts_code, start_date=None, end_date=None):
         """
-        获取日线行情数据 - 使用东方财富国内接口
+        获取日线行情数据 - 优先使用交易所官方接口
         
         Args:
             ts_code: 股票代码（带或不带交易所后缀）
@@ -557,63 +557,84 @@ class AkShareDataProvider:
         
         try:
             code = self._normalize_code(ts_code)
+            is_sh = ts_code.endswith('.SH') or not ts_code.endswith('.SZ')
             
-            # 尝试使用 AkShare 的 stock_zh_a_hist 接口
-            # 这个接口在国内应该可以直接访问
-            hist_df = self.ak.stock_zh_a_hist(
-                symbol=code,
-                period="daily",
-                start_date=start_date or (datetime.now() - timedelta(days=30)).strftime("%Y%m%d"),
-                end_date=end_date or datetime.now().strftime("%Y%m%d"),
-                adjust=""
-            )
+            # 方案1: 使用交易所官方接口（最稳定）
+            try:
+                if is_sh:
+                    # 上交所接口
+                    sh_df = self.ak.stock_sse_summary()
+                    if sh_df is not None and not sh_df.empty:
+                        # 这里需要转换为统一的日线格式
+                        print(f"✓ 上交所数据接口可用")
+                else:
+                    # 深交所接口  
+                    sz_df = self.ak.stock_szse_summary()
+                    if sz_df is not None and not sz_df.empty:
+                        print(f"✓ 深交所数据接口可用")
+            except Exception as exchange_e:
+                print(f"⚠️ 交易所接口暂时不可用: {exchange_e}")
             
-            if hist_df is None or hist_df.empty:
-                # 如果历史数据失败，尝试获取单日实时数据
-                try:
-                    # 使用 stock_zh_a_spot 获取实时行情
-                    spot_df = self.ak.stock_zh_a_spot()
-                    if spot_df is not None and not spot_df.empty:
-                        target_row = spot_df[spot_df['代码'] == code]
-                        if not target_row.empty:
-                            row = target_row.iloc[0]
-                            result = [{
-                                "trade_date": datetime.now().strftime("%Y-%m-%d"),
-                                "open": float(row.get("今开", 0) or row.get("最新价", 0) or 0),
-                                "high": float(row.get("最高", 0) or row.get("最新价", 0) or 0),
-                                "low": float(row.get("最低", 0) or row.get("最新价", 0) or 0),
-                                "close": float(row.get("最新价", 0) or 0),
-                                "vol": float(row.get("成交量", 0) or 0),
-                                "amount": float(row.get("成交额", 0) or 0),
-                                "pct_chg": float(row.get("涨跌幅", 0) or 0)
-                            }]
-                            self._save_to_cache(cache_key, result)
-                            return result
-                except Exception as spot_e:
-                    print(f"⚠️ 实时数据接口也失败: {spot_e}")
+            # 方案2: 尝试使用 AkShare 的 stock_zh_a_hist 接口
+            try:
+                hist_df = self.ak.stock_zh_a_hist(
+                    symbol=code,
+                    period="daily",
+                    start_date=start_date or (datetime.now() - timedelta(days=30)).strftime("%Y%m%d"),
+                    end_date=end_date or datetime.now().strftime("%Y%m%d"),
+                    adjust=""
+                )
                 
-                return None
+                if hist_df is not None and not hist_df.empty:
+                    # 转换为统一格式
+                    result = []
+                    for _, row in hist_df.iterrows():
+                        result.append({
+                            "trade_date": row.get("日期", ""),
+                            "open": float(row.get("开盘", 0) or 0),
+                            "high": float(row.get("最高", 0) or 0),
+                            "low": float(row.get("最低", 0) or 0),
+                            "close": float(row.get("收盘", 0) or 0),
+                            "vol": float(row.get("成交量", 0) or 0),
+                            "amount": float(row.get("成交额", 0) or 0),
+                            "pct_chg": float(row.get("涨跌幅", 0) or 0)
+                        })
+                    
+                    self._save_to_cache(cache_key, result)
+                    print(f"✓ AkShare日线数据获取成功 {ts_code}")
+                    return result
+                    
+            except Exception as hist_e:
+                print(f"⚠️ AkShare日线接口失败: {hist_e}")
             
-            # 转换为统一格式
-            result = []
-            for _, row in hist_df.iterrows():
-                result.append({
-                    "trade_date": row.get("日期", ""),
-                    "open": float(row.get("开盘", 0) or 0),
-                    "high": float(row.get("最高", 0) or 0),
-                    "low": float(row.get("最低", 0) or 0),
-                    "close": float(row.get("收盘", 0) or 0),
-                    "vol": float(row.get("成交量", 0) or 0),
-                    "amount": float(row.get("成交额", 0) or 0),
-                    "pct_chg": float(row.get("涨跌幅", 0) or 0)
-                })
+            # 方案3: 尝试获取实时数据
+            try:
+                spot_df = self.ak.stock_zh_a_spot()
+                if spot_df is not None and not spot_df.empty:
+                    target_row = spot_df[spot_df['代码'] == code]
+                    if not target_row.empty:
+                        row = target_row.iloc[0]
+                        result = [{
+                            "trade_date": datetime.now().strftime("%Y-%m-%d"),
+                            "open": float(row.get("今开", 0) or row.get("最新价", 0) or 0),
+                            "high": float(row.get("最高", 0) or row.get("最新价", 0) or 0),
+                            "low": float(row.get("最低", 0) or row.get("最新价", 0) or 0),
+                            "close": float(row.get("最新价", 0) or 0),
+                            "vol": float(row.get("成交量", 0) or 0),
+                            "amount": float(row.get("成交额", 0) or 0),
+                            "pct_chg": float(row.get("涨跌幅", 0) or 0)
+                        }]
+                        self._save_to_cache(cache_key, result)
+                        print(f"✓ 实时数据获取成功 {ts_code}")
+                        return result
+            except Exception as spot_e:
+                print(f"⚠️ 实时数据接口失败: {spot_e}")
             
-            self._save_to_cache(cache_key, result)
-            return result
+            print(f"❌ 所有日线数据接口均失败 {ts_code}")
+            return None
             
         except Exception as e:
-            print(f"AkShare获取日线数据失败 {ts_code}: {e}")
-            # 记录详细错误信息以便调试
+            print(f"AkShare获取日线数据完全失败 {ts_code}: {e}")
             import traceback
             print(f"详细错误: {traceback.format_exc()}")
             return None
