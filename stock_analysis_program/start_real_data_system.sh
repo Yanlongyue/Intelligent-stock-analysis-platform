@@ -23,6 +23,9 @@ export MYSQL_PASSWORD="${MYSQL_PASSWORD:-201411}"
 export MYSQL_DATABASE="${MYSQL_DATABASE:-stock_analysis}"
 echo "🗄️  MySQL 配置: ${MYSQL_USER}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}"
 
+# 可选: AkShare 代理配置（如需要海外访问，请取消注释并修改）
+# export AKSHARE_PROXY="http://127.0.0.1:7890"
+
 # 检查Tushare Token
 if [ -z "$TUSHARE_TOKEN" ]; then
     echo "⚠️  警告: 未设置Tushare Pro API Token"
