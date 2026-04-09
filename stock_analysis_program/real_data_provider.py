@@ -1026,40 +1026,67 @@ class AkShareDataProvider:
             return None
     
     def get_stock_realtime_price(self, ts_code):
-        """获取实时价格（优先使用实时快照）"""
+        """获取实时价格（优先使用已缓存的快照数据，避免重复拉取）"""
         if not self.available:
             return None
         
         try:
             code = self._normalize_code(ts_code)
             
-            # 方案1: 使用 stock_zh_a_spot_em 获取全市场实时行情
-            try:
-                spot_df = self.ak.stock_zh_a_spot_em()
-                if spot_df is not None and not spot_df.empty:
-                    target_row = spot_df[spot_df['代码'] == code]
-                    if not target_row.empty:
-                        price = float(target_row.iloc[0].get("最新价", 0) or 0)
-                        if price > 0:
-                            print(f"✅ [{ts_code}] 实时价格: {price} (来自 stock_zh_a_spot_em)")
-                            return price
-            except Exception as e:
-                print(f"⚠️ [{ts_code}] 实时快照接口失败: {e}")
+            # ★ 优先从全市场快照缓存中获取（零网络开销）
+            cache = AkShareDataProvider._spot_cache
+            if cache is not None and (time.time() - AkShareDataProvider._spot_cache_time) < self._spot_cache_ttl:
+                target_row = cache[cache['代码'] == code]
+                if not target_row.empty:
+                    price = float(target_row.iloc[0].get("最新价", 0) or 0)
+                    if price > 0:
+                        print(f"✅ [{ts_code}] 实时价格: {price} (来自缓存)")
+                        return price
+            
+            # 缓存没有或过期 → 拉取并缓存（与 get_stock_realtime_snapshot 共享）
+            spot_df = None
+            now = time.time()
+            
+            # 如果缓存存在但过期了，重新拉取
+            if cache is not None and (now - AkShareDataProvider._spot_cache_time) >= self._spot_cache_ttl:
+                try:
+                    spot_df = self.ak.stock_zh_a_spot_em()
+                    if spot_df is not None and not spot_df.empty:
+                        AkShareDataProvider._spot_cache = spot_df
+                        AkShareDataProvider._spot_cache_time = now
+                        
+                        target_row = spot_df[spot_df['代码'] == code]
+                        if not target_row.empty:
+                            price = float(target_row.iloc[0].get("最新价", 0) or 0)
+                            if price > 0:
+                                print(f"✅ [{ts_code}] 实时价格: {price} (来自新缓存)")
+                                return price
+                except Exception as e:
+                    print(f"⚠️ [{ts_code}] 实时快照接口失败: {e}")
             
             # 方案2: 回退到日线数据
             daily_data = self.get_daily_quotes(ts_code, start_date=None, end_date=None)
             if daily_data and len(daily_data) > 0:
                 latest = daily_data[-1]
-                return latest.get("close")
+                price = latest.get("close")
+                print(f"📈 [{ts_code}] 实时价格(日线): {price}")
+                return price
                 
         except Exception as e:
             print(f"⚠️ [{ts_code}] 获取实时价格失败: {e}")
         
         return None
     
+    # 全市场实时快照缓存（类级别，所有实例共享）
+    _spot_cache = None
+    _spot_cache_time = 0
+    _spot_cache_ttl = 30  # 全市场快照缓存30秒
+
     def get_stock_realtime_snapshot(self, ts_code):
         """
         获取个股实时快照（含涨跌幅、成交量等完整信息）
+        
+        性能优化：全市场快照缓存30秒，避免重复拉取5000+股票数据。
         
         Args:
             ts_code: 股票代码
@@ -1073,35 +1100,64 @@ class AkShareDataProvider:
         try:
             code = self._normalize_code(ts_code)
             
-            # 使用 stock_zh_a_spot_em 获取实时行情
+            now = time.time()
+            cache = AkShareDataProvider._spot_cache
+            
+            # 使用缓存的快照数据（30秒内有效）
+            if cache is not None and (now - AkShareDataProvider._spot_cache_time) < self._spot_cache_ttl:
+                target_row = cache[cache['代码'] == code]
+                if not target_row.empty:
+                    return self._row_to_snapshot(ts_code, target_row.iloc[0])
+                else:
+                    print(f"⚠️ [{ts_code}] 在全市场快照中未找到，可能停牌")
+                    return None
+            
+            # 缓存过期或不存在，重新拉取
+            print(f"🔄 正在刷新全市场实时行情...")
             spot_df = self.ak.stock_zh_a_spot_em()
             if spot_df is not None and not spot_df.empty:
+                AkShareDataProvider._spot_cache = spot_df
+                AkShareDataProvider._spot_cache_time = now
+                
                 target_row = spot_df[spot_df['代码'] == code]
                 if not target_row.empty:
-                    row = target_row.iloc[0]
-                    return {
-                        "code": ts_code,
-                        "name": row.get("名称", ""),
-                        "current_price": float(row.get("最新价", 0) or 0),
-                        "open": float(row.get("今开", 0) or 0),
-                        "high": float(row.get("最高", 0) or 0),
-                        "low": float(row.get("最低", 0) or 0),
-                        "pre_close": float(row.get("昨收", 0) or 0),
-                        "change": float(row.get("涨跌额", 0) or 0),
-                        "pct_chg": float(row.get("涨跌幅", 0) or 0),
-                        "volume": float(row.get("成交量", 0) or 0),
-                        "amount": float(row.get("成交额", 0) or 0),
-                        "turnover": float(row.get("换手率", 0) or 0),
-                        "pe": float(row.get("市盈率-动态", 0) or row.get("市盈率", 0) or 0),
-                        "pb": float(row.get("市净率", 0) or 0),
-                        "market_cap": float(row.get("总市值", 0) or 0),
-                        "circ_cap": float(row.get("流通市值", 0) or 0),
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
+                    result = self._row_to_snapshot(ts_code, target_row.iloc[0])
+                    print(f"✅ [{ts_code}] 实时快照获取成功（已缓存）")
+                    return result
+                else:
+                    print(f"⚠️ [{ts_code}] 在全市场快照中未找到")
+                    return None
+                    
         except Exception as e:
             print(f"⚠️ [{ts_code}] 获取实时快照失败: {e}")
         
         return None
+    
+    def _row_to_snapshot(self, ts_code, row):
+        """将 DataFrame 行转换为快照字典"""
+        try:
+            return {
+                "code": ts_code,
+                "name": str(row.get("名称", "")),
+                "current_price": float(row.get("最新价", 0) or 0),
+                "open": float(row.get("今开", 0) or 0),
+                "high": float(row.get("最高", 0) or 0),
+                "low": float(row.get("最低", 0) or 0),
+                "pre_close": float(row.get("昨收", 0) or 0),
+                "change": float(row.get("涨跌额", 0) or 0),
+                "pct_chg": float(row.get("涨跌幅", 0) or 0),
+                "volume": float(row.get("成交量", 0) or 0),
+                "amount": float(row.get("成交额", 0) or 0),
+                "turnover": float(row.get("换手率", 0) or 0),
+                "pe": float(row.get("市盈率-动态", 0) or row.get("市盈率", 0) or 0),
+                "pb": float(row.get("市净率", 0) or 0),
+                "market_cap": float(row.get("总市值", 0) or 0),
+                "circ_cap": float(row.get("流通市值", 0) or 0),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        except Exception as e:
+            print(f"⚠️ 行数据转换失败: {e}")
+            return None
     
     def get_stock_moneyflow_realtime(self, ts_code):
         """

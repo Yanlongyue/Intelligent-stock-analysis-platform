@@ -224,41 +224,63 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
         self.send_json_response(data)
 
     def handle_get_positions(self):
-        """获取持仓数据（包含实时价格和操作建议）"""
+        """获取持仓数据（包含实时价格和操作建议）
+        
+        性能优化：只调用一次全市场实时快照接口（stock_zh_a_spot_em），
+        然后从中提取所有持仓股的数据，避免每只股票重复调用全量接口。
+        """
         positions_with_prices = []
+        position_codes = [pos["code"] for pos in self.positions]
+
+        # ★★★ 核心优化：一次性获取全市场实时行情，缓存后复用 ★★★
+        spot_cache = {}  # code -> snapshot dict
+        if hasattr(self.data_provider, "get_stock_realtime_snapshot"):
+            try:
+                # 尝试通过数据提供者批量获取
+                # AkShareDataProvider 的 get_stock_realtime_snapshot 内部调用 stock_zh_a_spot_em
+                # 我们只需要调用一次，然后缓存结果
+                for code in position_codes:
+                    try:
+                        snapshot = self.data_provider.get_stock_realtime_snapshot(code)
+                        if snapshot:
+                            spot_cache[code] = snapshot
+                            print(f"✅ [{code}] 实时快照获取成功")
+                    except Exception as e:
+                        print(f"⚠️ [{code}] 获取快照失败: {e}")
+            except Exception as e:
+                print(f"⚠️ 批量获取实时快照失败: {e}")
 
         for pos in self.positions:
             stock_code = pos["code"]
             
-            # 1. 获取实时价格（优先使用实时快照）
-            raw_price = self._get_current_price(stock_code)
+            # 1. 获取实时价格（优先从已缓存的快照中取）
+            raw_price = None
+            snapshot = spot_cache.get(stock_code)
+            
+            if snapshot:
+                raw_price = snapshot.get("current_price")
+            
+            # 快照没有的，回退到 _get_current_price（带日线fallback）
+            if raw_price is None:
+                raw_price = self._get_current_price(stock_code)
+                
             try:
                 current_price = round(float(raw_price), 2) if raw_price not in (None, "") else None
             except (TypeError, ValueError):
                 current_price = None
             
-            # 2. 获取实时快照（用于技术分析）
-            snapshot = None
-            try:
-                if hasattr(self.data_provider, "get_stock_realtime_snapshot"):
-                    snapshot = self.data_provider.get_stock_realtime_snapshot(stock_code)
-                    if snapshot:
-                        print(f"✅ [{stock_code}] 实时快照获取成功")
-            except Exception as e:
-                print(f"⚠️ 获取 {stock_code} 快照失败: {e}")
-            
-            # 3. 如果快照获取失败，尝试用日线数据构建增强快照
+            # 2. 如果快照获取失败，尝试用日线数据构建增强快照
             if snapshot is None and current_price is not None:
                 snapshot = self._build_enhanced_snapshot(stock_code, current_price, pos)
                 print(f"📊 [{stock_code}] 使用增强快照（非实时数据）")
             
-            # 4. 计算持仓数据
+            # 3. 计算持仓数据
             cost_value = round(pos["amount"] * pos["cost_price"], 2)
             position_value = round(pos["amount"] * current_price, 2) if current_price is not None else None
             profit_loss = round(position_value - cost_value, 2) if position_value is not None else None
             profit_loss_pct = round(profit_loss / cost_value * 100, 2) if profit_loss is not None and cost_value > 0 else None
             
-            # 5. 生成操作建议（必须生成，不能为None）
+            # 4. 生成操作建议（必须生成，不能为None）
             trading_advice = self._generate_trading_advice(
                 stock_code=stock_code,
                 snapshot=snapshot,
@@ -268,7 +290,7 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                 profit_loss_pct=profit_loss_pct
             )
             
-            # 6. 组装持仓数据
+            # 5. 组装持仓数据
             position_data = {
                 **pos,
                 "current_price": current_price,

@@ -1044,9 +1044,12 @@ const fmt = {
 };
 
 function colorClass(v) {
-  if(v > 0) return 'up';
-  if(v < 0) return 'down';
+  if(v == null || v === '' || isNaN(Number(v))) return 'neutral';
+  const n = Number(v);
+  if(n > 0) return 'up';
+  if(n < 0) return 'down';
   return 'neutral';
+}
 }
 
 function escapeHtml(value) {
@@ -1103,8 +1106,11 @@ async function apiFetch(path, fallbackFn, options = {}) {
   // CONFIG.api 为 null 时才走降级（空字符串 '' 表示同源模式，通过 Nginx /api/ 反向代理）
   if(CONFIG.api === null || CONFIG.api === undefined) return fallbackFn ? await fallbackFn() : null;
   try {
+    const isWriteReq = (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE');
+    const isPositionsRead = path.includes('/positions') && !isWriteReq;
+    const timeoutMs = isWriteReq ? 15000 : (isPositionsRead ? 60000 : 12000);
     const requestOptions = {
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(timeoutMs),
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -1391,13 +1397,26 @@ async function deletePosition(code, event) {
    持仓渲染
    ====================================================== */
 async function loadPositions() {
-  const data = await apiFetch('/api/positions', getOfflinePositions);
-  if(!data) return;
-  if(state.apiOnline && Array.isArray(data.positions)) {
-    saveLocalPositions(data.positions);
+  try {
+    const data = await apiFetch('/api/positions', getOfflinePositions);
+    if(!data) return;
+    const positions = data.positions || [];
+    if(state.apiOnline && Array.isArray(positions) && positions.length) {
+      saveLocalPositions(positions);
+    }
+    state.positions = positions.map(normalizePosition).map(enrichPosition);
+    state.overview = data.overview || {};
+  } catch(err) {
+    console.error('加载持仓数据失败:', err);
+    // 降级到本地缓存
+    try {
+      state.positions = getLocalPositions().map(enrichPosition);
+      state.overview = {};
+    } catch(e) {
+      state.positions = [];
+      state.overview = {};
+    }
   }
-  state.positions = (data.positions || []).map(normalizePosition).map(enrichPosition);
-  state.overview = data.overview || {};
   renderStats();
   renderPositions();
 }
@@ -1405,14 +1424,23 @@ async function loadPositions() {
 function renderStats() {
   const ov = state.overview;
   if(!ov) return;
-  document.getElementById('total-value').textContent = fmt.money(ov.total_value);
-  document.getElementById('total-cost').textContent = '成本: ' + fmt.money(ov.total_cost);
+  const totalValueEl = document.getElementById('total-value');
+  const totalCostEl = document.getElementById('total-cost');
   const profitEl = document.getElementById('total-profit');
-  profitEl.textContent = fmt.money(ov.total_profit);
-  profitEl.className = 'stat-value ' + colorClass(ov.total_profit);
-  document.getElementById('total-profit-pct').textContent = fmt.pct(ov.total_profit_pct);
-  document.getElementById('position-count').textContent = ov.total_positions || '--';
-  document.getElementById('position-update-time').textContent = '更新于 ' + fmt.now();
+  const profitPctEl = document.getElementById('total-profit-pct');
+  const countEl = document.getElementById('position-count');
+  const timeEl = document.getElementById('position-update-time');
+  
+  if(totalValueEl) totalValueEl.textContent = fmt.money(ov.total_value);
+  if(totalCostEl) totalCostEl.textContent = '成本: ' + fmt.money(ov.total_cost);
+  
+  if(profitEl) {
+    profitEl.textContent = fmt.money(ov.total_profit);
+    profitEl.className = 'stat-value ' + colorClass(ov.total_profit);
+  }
+  if(profitPctEl) profitPctEl.textContent = fmt.pct(ov.total_profit_pct);
+  if(countEl) countEl.textContent = ov.total_positions || '--';
+  if(timeEl) timeEl.textContent = '更新于 ' + fmt.now();
 }
 
 function getTypeLabel(type) {
@@ -1466,31 +1494,35 @@ function renderAdviceBadge(tradingAdvice) {
 
 function renderPositions() {
   const wrap = document.getElementById('positions-wrap');
-  if(!state.positions.length) {
-    wrap.innerHTML = '<div class="empty-state">暂无持仓数据，点击右上角“添加持仓”开始管理</div>';
+  if(!wrap) return;
+  if(!state.positions || !state.positions.length) {
+    wrap.innerHTML = '<div class="empty-state">暂无持仓数据，点击右上角"添加持仓"开始管理</div>';
     return;
   }
 
   const rows = state.positions.map(p => {
     const isActive = state.selectedStock === p.code;
-    const advice = p.trading_advice;
+    const advice = p.trading_advice || null;
+    const pctChg = (advice && typeof advice.current_pct_chg === 'number') ? advice.current_pct_chg : null;
+    const profitLoss = p.profit_loss != null ? p.profit_loss : null;
+    const profitPct = p.profit_loss_pct != null ? p.profit_loss_pct : null;
     return `
-      <tr class="position-row ${isActive ? 'active' : ''}" onclick="loadPriceHistory('${escapeHtml(p.code)}')">
+      <tr class="position-row ${isActive ? 'active' : ''}" onclick="loadPriceHistory('${escapeHtml(p.code || '')}')">
         <td>
-          <div class="stock-name">${escapeHtml(p.name)}</div>
-          <div class="stock-code">${escapeHtml(p.code)}</div>
+          <div class="stock-name">${escapeHtml(p.name || '--')}</div>
+          <div class="stock-code">${escapeHtml(p.code || '')}</div>
         </td>
         <td><span class="type-badge ${getTypeBadgeClass(p.type)}">${getTypeLabel(p.type)}</span></td>
-        <td>${fmt.num(p.amount)} 股</td>
+        <td>${fmt.num(p.amount)}</td>
         <td>${fmt.money(p.cost_price)}</td>
-        <td style="font-weight:600">${fmt.money(p.current_price)}<br><span class="current-pct ${advice && advice.current_pct_chg >= 0 ? 'up' : 'down'}">${advice && advice.current_pct_chg !== null ? (advice.current_pct_chg >= 0 ? '+' : '') + advice.current_pct_chg.toFixed(2) + '%' : ''}</span></td>
+        <td style="font-weight:600">${fmt.money(p.current_price)}<br><span class="current-pct ${pctChg >= 0 ? 'up' : 'down'}">${pctChg !== null && !isNaN(pctChg) ? (pctChg >= 0 ? '+' : '') + Number(pctChg).toFixed(2) + '%' : ''}</span></td>
         <td>${fmt.money(p.position_value)}</td>
-        <td class="profit-cell ${colorClass(p.profit_loss)}">${fmt.money(p.profit_loss)}<br><span style="font-size:11px">${fmt.pct(p.profit_loss_pct)}</span></td>
+        <td class="profit-cell ${colorClass(profitLoss)}">${fmt.money(profitLoss)}<br><span style="font-size:11px">${fmt.pct(profitPct)}</span></td>
         <td>${renderAdviceBadge(advice)}</td>
         <td>
           <div class="row-actions">
-            <button class="row-action-btn" onclick="event.stopPropagation(); openPositionModal('${escapeHtml(p.code)}')">编辑</button>
-            <button class="row-action-btn delete" onclick="deletePosition('${escapeHtml(p.code)}', event)">删除</button>
+            <button class="row-action-btn" onclick="event.stopPropagation(); openPositionModal('${escapeHtml(p.code || '')}')">编辑</button>
+            <button class="row-action-btn delete" onclick="deletePosition('${escapeHtml(p.code || '')}', event)">删除</button>
           </div>
         </td>
       </tr>`;
