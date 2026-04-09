@@ -236,45 +236,33 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
             try:
                 if hasattr(self.data_provider, "get_stock_realtime_snapshot"):
                     snapshot = self.data_provider.get_stock_realtime_snapshot(stock_code)
+                    if snapshot:
+                        print(f"✅ [{stock_code}] 实时快照获取成功")
             except Exception as e:
                 print(f"⚠️ 获取 {stock_code} 快照失败: {e}")
             
-            # 如果快照获取失败但价格获取成功，构造基本快照
+            # 3. 如果快照获取失败，尝试用日线数据构建增强快照
             if snapshot is None and current_price is not None:
-                snapshot = {
-                    "current_price": current_price,
-                    "pct_chg": 0  # 无法获取涨跌幅时默认为0
-                }
+                snapshot = self._build_enhanced_snapshot(stock_code, current_price, pos)
+                print(f"📊 [{stock_code}] 使用增强快照（非实时数据）")
             
-            # 3. 计算持仓数据
+            # 4. 计算持仓数据
             cost_value = round(pos["amount"] * pos["cost_price"], 2)
             position_value = round(pos["amount"] * current_price, 2) if current_price is not None else None
             profit_loss = round(position_value - cost_value, 2) if position_value is not None else None
             profit_loss_pct = round(profit_loss / cost_value * 100, 2) if profit_loss is not None and cost_value > 0 else None
             
-            # 4. 生成操作建议
-            trading_advice = None
-            if snapshot is not None:
-                try:
-                    advice_result = TechnicalAdvisor.analyze_intraday_trend(
-                        snapshot=snapshot,
-                        cost_price=pos.get("cost_price"),
-                        position_type=pos.get("type", "value")
-                    )
-                    trading_advice = {
-                        "type": advice_result.get("advice_type"),
-                        "label": advice_result.get("advice_label"),
-                        "class": advice_result.get("advice_class"),
-                        "score": advice_result.get("score"),
-                        "reason": advice_result.get("reason"),
-                        "action": advice_result.get("suggested_action", {}),
-                        "current_pct_chg": advice_result.get("current_pct_chg"),
-                        "current_profit_pct": advice_result.get("current_profit_pct")
-                    }
-                except Exception as e:
-                    print(f"⚠️ 生成 {stock_code} 建议失败: {e}")
+            # 5. 生成操作建议（必须生成，不能为None）
+            trading_advice = self._generate_trading_advice(
+                stock_code=stock_code,
+                snapshot=snapshot,
+                current_price=current_price,
+                cost_price=pos.get("cost_price"),
+                position_type=pos.get("type", "value"),
+                profit_loss_pct=profit_loss_pct
+            )
             
-            # 5. 组装持仓数据
+            # 6. 组装持仓数据
             position_data = {
                 **pos,
                 "current_price": current_price,
@@ -283,7 +271,6 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
                 "profit_loss": profit_loss,
                 "profit_loss_pct": profit_loss_pct,
                 "trading_advice": trading_advice,
-                "snapshot": snapshot,  # 保留完整快照供前端使用
                 "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             positions_with_prices.append(position_data)
@@ -1110,6 +1097,177 @@ class RealDataBackendHandler(BaseHTTPRequestHandler):
         except Exception as exc:
             print(f"获取价格 {stock_code} 失败: {exc}")
             return last_known_price
+
+    def _build_enhanced_snapshot(self, stock_code, current_price, pos):
+        """
+        当实时快照不可用时，用日线数据构建增强快照
+        
+        尝试从数据源获取最近几天的日线，计算涨跌幅等指标
+        """
+        snapshot = {
+            "current_price": current_price,
+            "open": current_price,
+            "high": current_price,
+            "low": current_price,
+            "pre_close": pos.get("cost_price", current_price),
+            "pct_chg": 0,
+            "change": 0,
+            "volume": 0,
+            "amount": 0,
+            "turnover": 0,
+            "pe": 0,
+            "pb": 0,
+            "market_cap": 0,
+            "circ_cap": 0,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "_is_enhanced": True  # 标记为增强快照（非实时）
+        }
+        
+        # 尝试从日线数据计算涨跌幅
+        try:
+            if hasattr(self.data_provider, 'get_daily_quotes'):
+                daily_data = self.data_provider.get_daily_quotes(
+                    stock_code, 
+                    start_date=(datetime.now() - timedelta(days=5)).strftime("%Y%m%d"),
+                    end_date=datetime.now().strftime("%Y%m%d")
+                )
+                
+                if daily_data and len(daily_data) >= 2:
+                    latest = daily_data[-1]
+                    prev = daily_data[-2] if len(daily_data) >= 2 else None
+                    
+                    prev_close = float(prev.get("close", 0)) if prev else float(latest.get("pre_close", 0) or 0)
+                    
+                    if prev_close > 0:
+                        pct_chg = round((current_price - prev_close) / prev_close * 100, 2)
+                        snapshot["pct_chg"] = pct_chg
+                        snapshot["change"] = round(current_price - prev_close, 3)
+                        snapshot["pre_close"] = round(prev_close, 3)
+                        snapshot["open"] = float(latest.get("open", current_price) or current_price)
+                        snapshot["high"] = float(latest.get("high", current_price) or current_price)
+                        snapshot["low"] = float(latest.get("low", current_price) or current_price)
+                        snapshot["volume"] = float(latest.get("vol", 0) or 0)
+                        snapshot["turnover"] = float(latest.get("turn", 0) or 0)
+                        print(f"✅ [{stock_code}] 从日线计算涨跌幅: {pct_chg}%")
+        except Exception as e:
+            print(f"⚠️ [{stock_code}] 构建增强快照时失败: {e}")
+        
+        return snapshot
+
+    def _generate_trading_advice(self, stock_code, snapshot, current_price, cost_price, 
+                                  position_type="value", profit_loss_pct=None):
+        """
+        生成操作建议（保证一定返回有效建议）
+        
+        即使没有实时快照，也基于盈亏状态给出基础建议
+        """
+        # 情况1：有完整快照 → 用技术分析引擎
+        if snapshot and not snapshot.get("_is_enhanced"):
+            try:
+                advice_result = TechnicalAdvisor.analyze_intraday_trend(
+                    snapshot=snapshot,
+                    cost_price=cost_price,
+                    position_type=position_type
+                )
+                return {
+                    "type": advice_result.get("advice_type"),
+                    "label": advice_result.get("advice_label"),
+                    "class": advice_result.get("advice_class"),
+                    "score": advice_result.get("score"),
+                    "reason": advice_result.get("reason"),
+                    "action": advice_result.get("suggested_action", {}),
+                    "current_pct_chg": advice_result.get("current_pct_chg"),
+                    "current_profit_pct": advice_result.get("current_profit_pct")
+                }
+            except Exception as e:
+                print(f"⚠️ [{stock_code}] 技术分析引擎失败: {e}")
+        
+        # 情况2：有增强快照或无快照 → 基于盈亏状态和已知涨跌幅生成建议
+        pct_chg = snapshot.get("pct_chg", 0) if snapshot else 0
+        profit_pct = profit_loss_pct if profit_loss_pct is not None else (
+            round((current_price - cost_price) / cost_price * 100, 2) if cost_price and current_price else 0
+        )
+        
+        advice = self._generate_basic_advice(pct_chg, profit_pct, position_type, cost_price)
+        
+        print(f"💡 [{stock_code}] 使用基础建议: {advice['label']} (盈亏:{profit_pct:.1f}%, 当日:{pct_chg:.1f}%)")
+        return advice
+
+    def _generate_basic_advice(self, pct_chg, profit_pct, position_type="value", cost_price=None):
+        """
+        基础建议生成器：当实时数据不足时，基于盈亏状态和当日涨跌生成建议
+        """
+        score = 50  # 起始中性分
+        reasons = []
+        
+        # 根据持仓类型设置参数
+        stop_loss_map = {"value": -5, "growth": -4, "concept": -3}
+        take_profit_map = {"value": 10, "growth": 15, "concept": 10}
+        stop_loss = stop_loss_map.get(position_type, -5)
+        take_profit = take_profit_map.get(position_type, 10)
+        
+        # 涨跌幅评分 (-30 ~ +30)
+        if pct_chg >= 3:
+            score += 20; reasons.append(f"当日强势上涨(+{pct_chg:.1f}%)")
+        elif pct_chg >= 1:
+            score += 10; reasons.append(f"当日温和上涨(+{pct_chg:.1f}%)")
+        elif pct_chg > 0:
+            score += 5; reasons.append(f"当日微涨(+{pct_chg:.1f}%)")
+        elif pct_chg >= -1:
+            score -= 5; reasons.append(f"当日微跌({pct_chg:.1f}%)")
+        elif pct_chg >= -3:
+            score -= 15; reasons.append(f"当日下跌({pct_chg:.1f}%)")
+        else:
+            score -= 25; reasons.append(f"当日大幅下跌({pct_chg:.1f}%)")
+        
+        # 盈亏状态调整 (-10 ~ +10)
+        if profit_pct >= take_profit:
+            score -= 10; reasons.append(f"已获利丰厚(盈利+{profit_pct:.1f}%)，注意止盈")
+        elif profit_pct >= 5:
+            score -= 5; reasons.append(f"有一定获利(盈利+{profit_pct:.1f}%)")
+        elif profit_pct <= stop_loss:
+            score += 8; reasons.append(f"已跌破止损线(亏损{profit_pct:.1f}%)，考虑补仓或止损")
+        elif profit_pct <= -10:
+            score += 5; reasons.append(f"亏损较大(亏损{profit_pct:.1f}%)，可逢低补仓")
+        elif profit_pct <= -5:
+            score += 3; reasons.append(f"小幅亏损(亏损{profit_pct:.1f}%)")
+        else:
+            reasons.append(f"当前盈亏约{'+' if profit_pct>=0 else ''}{profit_pct:.1f}%")
+        
+        # 根据总分确定建议类型
+        if score >= 60:
+            advice_type = TechnicalAdvisor.ADVICE_ADD_MODERATE
+            reason_prefix = "技术面偏多"
+        elif score >= 45:
+            advice_type = TechnicalAdvisor.ADVICE_ADD_LIGHT
+            reason_prefix = "技术面略有好转"
+        elif score >= 35:
+            advice_type = TechnicalAdvisor.ADVICE_HOLD
+            reason_prefix = "技术面偏中性"
+        elif score >= 25:
+            advice_type = TechnicalAdvisor.ADVICE_REDUCE_LIGHT
+            reason_prefix = "技术面偏弱"
+        elif score >= 15:
+            advice_type = TechnicalAdvisor.ADVICE_REDUCE_MODERATE
+            reason_prefix = "技术面走弱"
+        else:
+            advice_type = TechnicalAdvisor.ADVICE_REDUCE_HEAVY
+            reason_prefix = "技术面明显走弱"
+        
+        full_reason = f"{reason_prefix}；{'; '.join(reasons)}"
+        if profit_pct and cost_price:
+            full_reason += f"；成本价{cost_price}"
+        
+        return {
+            "type": advice_type,
+            "label": TechnicalAdvisor.ADVICE_LABELS.get(advice_type, "保持观望"),
+            "class": TechnicalAdvisor.ADVICE_CLASSES.get(advice_type, "neutral"),
+            "score": score,
+            "reason": full_reason,
+            "action": TechnicalAdvisor._get_suggested_action(advice_type, score),
+            "current_pct_chg": round(pct_chg, 2),
+            "current_profit_pct": round(profit_pct, 2) if profit_pct is not None else None
+        }
 
     def _get_index_name(self, index_code):
         """获取指数名称"""
