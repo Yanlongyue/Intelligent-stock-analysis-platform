@@ -977,6 +977,10 @@ const CONFIG = {
     if(location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
       return 'http://localhost:9000';
     }
+    // 服务器公网IP自动配置
+    if(location.hostname === '101.133.150.164') {
+      return 'http://101.133.150.164:9000';
+    }
     return null;
   })(),
   refreshInterval: 30000,
