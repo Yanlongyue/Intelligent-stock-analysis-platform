@@ -996,14 +996,13 @@ const CONFIG = {
       const resolved = window.resolveApiBaseUrl();
       return resolved || null;
     }
+    // 本地开发环境
     if(location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
       return 'http://localhost:9000';
     }
-    // 服务器公网IP自动配置
-    if(location.hostname === '101.133.150.164') {
-      return 'http://101.133.150.164:9000';
-    }
-    return null;
+    // 服务器公网访问 → 同源模式（通过 Nginx /api/ 反向代理）
+    // 不再硬编码 :9000 端口，由 Nginx 转发到后端
+    return '';  // 空字符串表示同源，请求走 /api/...（需配合 Nginx 反代配置）
   })(),
   refreshInterval: 30000,
   chartDays: 30,
@@ -1101,7 +1100,8 @@ function getCurrentPositionList() {
 }
 
 async function apiFetch(path, fallbackFn, options = {}) {
-  if(!CONFIG.api) return fallbackFn ? await fallbackFn() : null;
+  // CONFIG.api 为 null 时才走降级（空字符串 '' 表示同源模式，通过 Nginx /api/ 反向代理）
+  if(CONFIG.api === null || CONFIG.api === undefined) return fallbackFn ? await fallbackFn() : null;
   try {
     const requestOptions = {
       signal: AbortSignal.timeout(8000),
@@ -1135,7 +1135,8 @@ async function checkApiStatus() {
   const badge = document.getElementById('status-badge');
   const timeEl = document.getElementById('status-time');
 
-  if(!CONFIG.api) {
+  // CONFIG.api 为 null 时才显示未配置提示（空字符串 = 同源模式，正常使用）
+  if(CONFIG.api === null || CONFIG.api === undefined) {
     const statusInfo = window.getApiConfigStatus ? window.getApiConfigStatus() : {};
     const isProdMode = statusInfo.mode === 'production';
     const blockedReason = statusInfo.blockedReason || '';
@@ -1331,7 +1332,7 @@ async function submitPositionForm() {
   state.positionModal.saving = true;
 
   try {
-    if(CONFIG.api && state.apiOnline) {
+    if((CONFIG.api || CONFIG.api === '') && state.apiOnline) {
       if(state.positionModal.mode === 'edit') {
         await apiFetch(`/api/positions/${encodeURIComponent(state.positionModal.originalCode)}`, null, {
           method: 'PUT',
@@ -1371,7 +1372,7 @@ async function deletePosition(code, event) {
   if(!confirm(`确认删除 ${target.name}（${target.code}）的持仓记录？`)) return;
 
   try {
-    if(CONFIG.api && state.apiOnline) {
+    if((CONFIG.api || CONFIG.api === '') && state.apiOnline) {
       await apiFetch(`/api/positions/${encodeURIComponent(code)}`, null, { method: 'DELETE' });
     } else {
       removeLocalPosition(code);
