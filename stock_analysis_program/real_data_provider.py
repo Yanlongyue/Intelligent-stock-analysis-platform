@@ -472,16 +472,30 @@ class AkShareDataProvider:
     当Tushare不可用时使用AkShare作为备用数据源
     """
     
-    def __init__(self):
-        """初始化AkShare数据提供者"""
+    def __init__(self, proxy_url=None):
+        """初始化AkShare数据提供者
+        
+        Args:
+            proxy_url: 代理服务器URL，如 "http://127.0.0.1:7890"
+        """
         try:
             import akshare as ak
             self.ak = ak
             self.available = True
-            print("✅ AkShare备用数据源初始化成功")
+            self.proxy_url = proxy_url
+            
+            # 设置全局代理（如果提供了代理）
+            if self.proxy_url:
+                import os
+                os.environ['HTTP_PROXY'] = self.proxy_url
+                os.environ['HTTPS_PROXY'] = self.proxy_url
+                print(f"✅ AkShare备用数据源初始化成功（使用代理: {self.proxy_url}）")
+            else:
+                print("✅ AkShare备用数据源初始化成功（无代理）")
         except ImportError:
             self.ak = None
             self.available = False
+            self.proxy_url = None
             print("⚠️ AkShare未安装，备用数据源不可用")
         
         # 缓存机制
@@ -768,13 +782,14 @@ class FallbackDataProvider:
     按优先级依次尝试: Tushare -> AkShare，默认不再回退到 Mock 数据
     """
     
-    def __init__(self, tushare_token=None, enable_mock=False):
+    def __init__(self, tushare_token=None, enable_mock=False, proxy_url=None):
         """
         初始化链式回退数据提供者
         
         Args:
             tushare_token: Tushare API token
             enable_mock: 是否启用 Mock 作为最终回退
+            proxy_url: 代理服务器URL，用于 AkShare 海外访问
         """
         self.providers = []
         self.provider_names = []
@@ -796,7 +811,7 @@ class FallbackDataProvider:
         
         # 第二层: AkShare（备用数据源）
         try:
-            akshare_provider = AkShareDataProvider()
+            akshare_provider = AkShareDataProvider(proxy_url=proxy_url)
             if akshare_provider.available:
                 self.providers.append(akshare_provider)
                 self.provider_names.append("AkShare")
@@ -1240,7 +1255,7 @@ class MockDataProvider:
 
 
 # 数据提供者工厂
-def get_data_provider(use_real_data=True, token=None, enable_mock=False):
+def get_data_provider(use_real_data=True, token=None, enable_mock=False, proxy_url=None):
     """
     获取数据提供者实例
     
@@ -1248,22 +1263,29 @@ def get_data_provider(use_real_data=True, token=None, enable_mock=False):
         use_real_data: 是否使用真实数据
         token: Tushare Pro API token
         enable_mock: 是否显式启用 Mock 回退
+        proxy_url: 代理服务器URL，用于 AkShare 海外访问
         
     Returns:
         数据提供者实例（默认仅保留真实数据链路）
     """
     if use_real_data:
         try:
-            provider = FallbackDataProvider(token, enable_mock=enable_mock)
+            # 如果没有显式传入 proxy_url，尝试从环境变量读取
+            if proxy_url is None:
+                proxy_url = os.getenv('AKSHARE_PROXY') or os.getenv('HTTP_PROXY')
+            
+            provider = FallbackDataProvider(token, enable_mock=enable_mock, proxy_url=proxy_url)
             print("✅ 真实数据链路初始化完成")
+            if proxy_url:
+                print(f"   代理配置: {proxy_url}")
             return provider
         except Exception as e:
             print(f"⚠️ 初始化数据提供者失败: {e}")
-            return FallbackDataProvider(token=None, enable_mock=enable_mock)
+            return FallbackDataProvider(token=None, enable_mock=enable_mock, proxy_url=proxy_url)
     if enable_mock:
         print("ℹ️ 使用 Mock 演示数据模式")
         return MockDataProvider()
-    return FallbackDataProvider(token=None, enable_mock=False)
+    return FallbackDataProvider(token=None, enable_mock=False, proxy_url=proxy_url)
 
 
 # 测试代码
