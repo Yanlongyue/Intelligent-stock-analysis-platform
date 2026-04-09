@@ -9,7 +9,7 @@ window.APP_CONFIG = {
         // 其他可选：
         //   1) 直接填写 HTTPS API：production: 'https://api.stock-analysis.example.com'
         //   2) 临时通过 URL 参数覆盖：?api=https://xxx
-        production: 'same-origin',
+        production: 'http://101.133.150.164:9000',
         // 是否允许通过 URL 参数 ?api=xxx 覆盖配置
         allowQueryOverride: true,
         // 公网穿透工具配置说明
