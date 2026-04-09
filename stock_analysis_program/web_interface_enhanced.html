@@ -941,10 +941,11 @@
             const runtime = window.getApiConfigStatus ? window.getApiConfigStatus() : (() => {
                 const hostname = window.location.hostname;
                 const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+                const isServer = hostname === '101.133.150.164';
 
                 return {
-                    apiBaseUrl: isLocalHost ? 'http://localhost:9000' : '',
-                    isConfigured: isLocalHost,
+                    apiBaseUrl: isLocalHost ? 'http://localhost:9000' : (isServer ? 'http://101.133.150.164:9000' : ''),
+                    isConfigured: isLocalHost || isServer,
                     mode: isLocalHost ? 'development' : 'production',
                     version: 'fallback'
                 };
