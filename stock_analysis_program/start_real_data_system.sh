@@ -15,6 +15,14 @@ pip list | grep -E "requests|pandas" || {
     pip install requests pandas --quiet
 }
 
+# MySQL 数据库配置（优先使用外部环境变量，否则使用默认值）
+export MYSQL_HOST="${MYSQL_HOST:-127.0.0.1}"
+export MYSQL_PORT="${MYSQL_PORT:-3306}"
+export MYSQL_USER="${MYSQL_USER:-stock_user}"
+export MYSQL_PASSWORD="${MYSQL_PASSWORD:-201411}"
+export MYSQL_DATABASE="${MYSQL_DATABASE:-stock_analysis}"
+echo "🗄️  MySQL 配置: ${MYSQL_USER}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}"
+
 # 检查Tushare Token
 if [ -z "$TUSHARE_TOKEN" ]; then
     echo "⚠️  警告: 未设置Tushare Pro API Token"
@@ -95,6 +103,7 @@ echo "   🔸 GET /api/price_history/<code> - 获取价格历史"
 echo "   🔸 GET /api/update_prices   - 更新价格缓存"
 echo "   🔸 GET /api/market_overview - 获取市场概况"
 echo "   🔸 GET /api/data_status     - 获取数据状态"
+echo "   🔸 GET /api/db_stats        - 查看数据库存储统计"
 echo ""
 echo "🔄 按 Ctrl+C 停止所有服务"
 
