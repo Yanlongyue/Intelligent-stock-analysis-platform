@@ -1213,6 +1213,7 @@ function enrichPosition(position) {
     cost_value: Number(costValue.toFixed(2)),
     profit_loss: hasCurrentPrice ? Number(profitLoss.toFixed(2)) : null,
     profit_loss_pct: hasCurrentPrice ? Number(profitLossPct.toFixed(2)) : null,
+    trading_advice: position.trading_advice || null,  // 透传操作建议
     last_updated: fmt.now()
   };
 }
