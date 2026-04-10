@@ -18,8 +18,9 @@ pip list | grep -E "requests|pandas" || {
 # MySQL 数据库配置（优先使用外部环境变量，否则使用默认值）
 export MYSQL_HOST="${MYSQL_HOST:-127.0.0.1}"
 export MYSQL_PORT="${MYSQL_PORT:-3306}"
-export MYSQL_USER="${MYSQL_USER:-stock_user}"
-export MYSQL_PASSWORD="${MYSQL_PASSWORD:-201411}"
+export MYSQL_USER="${MYSQL_USER:-root}"
+# ⚠️ 生产环境请务必通过环境变量设置 MYSQL_PASSWORD
+export MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
 export MYSQL_DATABASE="${MYSQL_DATABASE:-stock_analysis}"
 echo "🗄️  MySQL 配置: ${MYSQL_USER}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}"
 

@@ -6,10 +6,8 @@ window.APP_CONFIG = {
         development: 'http://localhost:9000',
         // 生产环境 API 地址
         // 推荐值：'same-origin'，表示前端与后端部署在同一域名下，自动使用当前站点 origin
-        // 其他可选：
-        //   1) 直接填写 HTTPS API：production: 'https://api.stock-analysis.example.com'
-        //   2) 临时通过 URL 参数覆盖：?api=https://xxx
-        production: 'http://101.133.150.164:9000',
+        // Nginx 统一入口部署时必须使用 same-origin（通过 /api/ 反向代理到后端 9000）
+        production: 'same-origin',
         // 是否允许通过 URL 参数 ?api=xxx 覆盖配置
         allowQueryOverride: true,
         // 公网穿透工具配置说明
